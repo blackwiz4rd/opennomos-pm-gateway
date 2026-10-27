@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PACKAGE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd -- "${PACKAGE_DIR}/.." && pwd)"
+
+SPEC_PATH="${REPO_ROOT}/docs/reference/pm-api-openapi-v0.1.yaml"
+OUTPUT_PACKAGE_DIR="${PACKAGE_DIR}/src/pm_gateway"
+GENERATOR_CLI="${OPENAPI_GENERATOR_CLI:-openapi-generator-cli}"
+GENERATOR_VERSION="${OPENAPI_GENERATOR_VERSION:-7.24.0}"
+CHECK_ONLY=0
+
+usage() {
+    cat <<EOF
+Usage: $0 [--check] [--spec PATH] [--package-dir PATH]
+
+Generate the PM gateway's FastAPI server routes and models from the OpenAPI
+contract. Generated output is limited to pm_gateway/apis, pm_gateway/models,
+and pm_gateway/security_api.py; handwritten implementation modules are kept.
+With --check, compare those outputs without modifying the package.
+
+Environment:
+  OPENAPI_GENERATOR_CLI       CLI executable (default: openapi-generator-cli)
+  OPENAPI_GENERATOR_VERSION   Required CLI version (default: 7.24.0)
+EOF
+}
+
+while (($#)); do
+    case "$1" in
+        --check)
+            CHECK_ONLY=1
+            shift
+            ;;
+        --spec)
+            [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+            SPEC_PATH="$2"
+            shift 2
+            ;;
+        --package-dir)
+            [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+            OUTPUT_PACKAGE_DIR="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            printf 'Unknown argument: %s\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [[ ! -f "$SPEC_PATH" ]]; then
+    printf 'OpenAPI specification not found: %s\n' "$SPEC_PATH" >&2
+    exit 1
+fi
+
+if ! command -v "$GENERATOR_CLI" >/dev/null 2>&1; then
+    printf 'OpenAPI Generator CLI not found: %s\n' "$GENERATOR_CLI" >&2
+    printf 'Install OpenAPI Generator %s and Java, or set OPENAPI_GENERATOR_CLI.\n' "$GENERATOR_VERSION" >&2
+    exit 1
+fi
+
+installed_version="$("$GENERATOR_CLI" version | tr -d '\r' | tail -n 1)"
+if [[ "$installed_version" != "$GENERATOR_VERSION" ]]; then
+    printf 'OpenAPI Generator version mismatch: expected %s, found %s\n' \
+        "$GENERATOR_VERSION" "$installed_version" >&2
+    printf 'Set OPENAPI_GENERATOR_VERSION to deliberately use another version.\n' >&2
+    exit 1
+fi
+
+TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp/opencode}/pm-gateway-openapi.XXXXXX")"
+trap 'rm -rf -- "$TEMP_ROOT"' EXIT
+
+"$GENERATOR_CLI" generate \
+    -i "$SPEC_PATH" \
+    -g python-fastapi \
+    -o "$TEMP_ROOT/generated" \
+    --additional-properties="packageName=pm_gateway,fastapiImplementationPackage=impl,packageVersion=0.1.0,serverPort=8080,disallowAdditionalPropertiesIfNotPresent=false" \
+    --global-property="apiTests=false,modelTests=false"
+
+generated_package="${TEMP_ROOT}/generated/src/pm_gateway"
+for required_path in "${generated_package}/apis" "${generated_package}/models" "${generated_package}/security_api.py"; do
+    if [[ ! -e "$required_path" ]]; then
+        printf 'Expected generated output is missing: %s\n' "$required_path" >&2
+        exit 1
+    fi
+done
+
+if ((CHECK_ONLY)); then
+    for current_path in "${OUTPUT_PACKAGE_DIR}/apis" "${OUTPUT_PACKAGE_DIR}/models" "${OUTPUT_PACKAGE_DIR}/security_api.py"; do
+        if [[ ! -e "$current_path" ]]; then
+            printf 'Generated output is missing from the package: %s\n' "$current_path" >&2
+            exit 1
+        fi
+    done
+
+    diff_status=0
+    diff -ru --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' -- \
+        "${OUTPUT_PACKAGE_DIR}/apis" "${generated_package}/apis" || {
+        status=$?
+        ((status > diff_status)) && diff_status=$status
+    }
+    diff -ru --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' -- \
+        "${OUTPUT_PACKAGE_DIR}/models" "${generated_package}/models" || {
+        status=$?
+        ((status > diff_status)) && diff_status=$status
+    }
+    diff -u -- "${OUTPUT_PACKAGE_DIR}/security_api.py" "${generated_package}/security_api.py" || {
+        status=$?
+        ((status > diff_status)) && diff_status=$status
+    }
+    if ((diff_status != 0)); then
+        if ((diff_status == 1)); then
+            printf 'Generated server code is out of date. Run %s to update it.\n' "$0" >&2
+        else
+            printf 'Could not compare generated server code (diff exit %s).\n' "$diff_status" >&2
+        fi
+        exit "$diff_status"
+    fi
+
+    printf 'Generated server code is up to date in %s\n' "$OUTPUT_PACKAGE_DIR"
+    exit 0
+fi
+
+mkdir -p "$OUTPUT_PACKAGE_DIR"
+rm -rf -- "${OUTPUT_PACKAGE_DIR}/apis" "${OUTPUT_PACKAGE_DIR}/models"
+rm -f -- "${OUTPUT_PACKAGE_DIR}/security_api.py"
+cp -R -- "${generated_package}/apis" "${OUTPUT_PACKAGE_DIR}/apis"
+cp -R -- "${generated_package}/models" "${OUTPUT_PACKAGE_DIR}/models"
+cp -- "${generated_package}/security_api.py" "${OUTPUT_PACKAGE_DIR}/security_api.py"
+
+printf 'Generated PM gateway server code in %s\n' "$OUTPUT_PACKAGE_DIR"

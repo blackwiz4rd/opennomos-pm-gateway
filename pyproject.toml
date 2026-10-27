@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=75.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opennomos-pm-gateway"
+version = "0.1.0"
+description = "Standalone Project Management interoperability API gateway for OpenNomos"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "httpx>=0.28.0,<1.0.0",
+    "jira==3.10.5",
+    "msal>=1.24.0,<2.0.0",
+    "plane-sdk>=0.2.13,<1.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "uvicorn[standard]>=0.30.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.28.0",
+    "pytest>=8.0.0",
+    "PyYAML>=6.0",
+]
+
+[project.scripts]
+pm-gateway = "pm_gateway.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pm_gateway*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
