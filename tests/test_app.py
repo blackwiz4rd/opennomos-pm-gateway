@@ -4,6 +4,8 @@ import httpx
 import pytest
 
 from pm_gateway.app import app
+from pm_gateway.apis.discovery_api_base import BaseDiscoveryApi
+from pm_gateway.models.container_page import ContainerPage
 
 
 @pytest.mark.asyncio
@@ -62,6 +64,42 @@ async def test_capabilities_are_scoped_to_the_request_provider(
     assert response.status_code == 200
     assert response.json()["provider"]["key"] == "plane"
     assert response.json()["features"]
+
+
+@pytest.mark.asyncio
+async def test_list_containers_accepts_bounded_integer_query_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PM_GATEWAY_API_TOKEN", "expected-secret")
+    received_limits: list[int | None] = []
+
+    class FakeDiscoveryApi:
+        async def list_containers(
+            self,
+            workspace_id: str,
+            provider: str,
+            credential: str,
+            cursor: str | None,
+            limit: int | None,
+            base_url: str | None,
+        ) -> ContainerPage:
+            received_limits.append(limit)
+            return ContainerPage(items=[])
+
+    monkeypatch.setattr(BaseDiscoveryApi, "subclasses", (FakeDiscoveryApi,))
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/pm/v1/workspaces/shopflow/containers?limit=200",
+            headers={
+                "Authorization": "Bearer expected-secret",
+                "X-PM-Provider": "plane",
+                "X-PM-Provider-Credential": "ephemeral-test-key",
+            },
+        )
+
+    assert response.status_code == 200
+    assert received_limits == [200]
 
 
 @pytest.mark.asyncio

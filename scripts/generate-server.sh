@@ -91,6 +91,13 @@ for required_path in "${generated_package}/apis" "${generated_package}/models" "
     fi
 done
 
+# Query parameters are received as strings by HTTP. OpenAPI Generator marks
+# bounded integer query parameters as strict, which makes FastAPI reject valid
+# values such as `?limit=200` before the route runs. Keep their bounds while
+# allowing FastAPI to parse the query string into an integer.
+find "${generated_package}/apis" -type f -name '*.py' -exec \
+    sed -i 's/Field(le=200, strict=True, ge=1)/Field(le=200, ge=1)/g' {} +
+
 if ((CHECK_ONLY)); then
     for current_path in "${OUTPUT_PACKAGE_DIR}/apis" "${OUTPUT_PACKAGE_DIR}/models" "${OUTPUT_PACKAGE_DIR}/security_api.py"; do
         if [[ ! -e "$current_path" ]]; then

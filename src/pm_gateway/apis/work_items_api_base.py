@@ -27,7 +27,7 @@ class BaseWorkItemsApi:
         x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")],
         x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")],
         cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")],
-        limit: Optional[Annotated[int, Field(le=200, strict=True, ge=1)]],
+        limit: Optional[Annotated[int, Field(le=200, ge=1)]],
         changed_since: Annotated[Optional[datetime], Field(description="Return items updated at or after this RFC 3339 timestamp.")],
         state_id: Annotated[Optional[StrictStr], Field(description="Provider-native workflow state ID.")],
         assignee_id: Annotated[Optional[StrictStr], Field(description="Provider-scoped principal ID.")],
@@ -77,7 +77,7 @@ class BaseWorkItemsApi:
         x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")],
         x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")],
         cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")],
-        limit: Optional[Annotated[int, Field(le=200, strict=True, ge=1)]],
+        limit: Optional[Annotated[int, Field(le=200, ge=1)]],
         x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane and Planner use their documented defaults.")],
     ) -> CommentPage:
         """Optional capability. Providers may expose comments as stories, updates, notes, or discussions."""
@@ -91,7 +91,7 @@ class BaseWorkItemsApi:
         x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")],
         x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")],
         cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")],
-        limit: Optional[Annotated[int, Field(le=200, strict=True, ge=1)]],
+        limit: Optional[Annotated[int, Field(le=200, ge=1)]],
         x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane and Planner use their documented defaults.")],
     ) -> AttachmentPage:
         """Optional capability. File content download is outside this listing operation."""
