@@ -4,8 +4,8 @@ import httpx
 import pytest
 
 from pm_gateway.app import app
-from pm_gateway.apis.discovery_api_base import BaseDiscoveryApi
-from pm_gateway.models.container_page import ContainerPage
+from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
+from pm_gateway.generated.models.container_page import ContainerPage
 
 
 @pytest.mark.asyncio

@@ -7,11 +7,10 @@ adapter boundary; it does not import OpenNomos backend code or share its databas
 ## Generated server code
 
 The OpenAPI document at `../docs/reference/pm-api-openapi-v0.1.yaml` is the
-contract source. Generated API routes and models are under
-`src/pm_gateway/apis/`, `src/pm_gateway/models/`, and
-`src/pm_gateway/security_api.py`. **Do not edit those generated files by hand.**
-Implementations belong under `src/pm_gateway/impl/` and other handwritten
-modules. Regenerate with:
+contract source. Generated API routes and models are grouped under
+`src/pm_gateway/generated/` (APIs, models, and `security_api.py`). **Do not edit
+those generated files by hand.** Implementations belong under
+`src/pm_gateway/impl/` and other handwritten modules. Regenerate with:
 
 ```sh
 ./pm-gateway/scripts/generate-server.sh
@@ -20,8 +19,8 @@ modules. Regenerate with:
 ```
 
 The script requires OpenAPI Generator CLI `7.24.0` and Java. Override the
-specification or output package with `--spec` and `--package-dir`, or pin a
-different installed CLI version with `OPENAPI_GENERATOR_VERSION`.
+specification or generated output directory with `--spec` and `--package-dir`,
+or pin a different installed CLI version with `OPENAPI_GENERATOR_VERSION`.
 
 The Python FastAPI server generator is currently marked beta by OpenAPI
 Generator, and OpenAPI 3.1 support is marked beta. Review generated diffs and

@@ -3,22 +3,22 @@ from __future__ import annotations
 from typing import Any
 
 from pm_gateway.adapters.normalization import build_work_item_url, normalize_state_category
-from pm_gateway.models.container import Container
-from pm_gateway.models.container_ref import ContainerRef
-from pm_gateway.models.estimate_value import EstimateValue
-from pm_gateway.models.iteration_ref import IterationRef
-from pm_gateway.models.label_ref import LabelRef
-from pm_gateway.models.mapping_metadata import MappingMetadata
-from pm_gateway.models.named_ref import NamedRef
-from pm_gateway.models.principal_ref import PrincipalRef
-from pm_gateway.models.priority_value import PriorityValue
-from pm_gateway.models.source_metadata import SourceMetadata
-from pm_gateway.models.work_item import WorkItem
-from pm_gateway.models.work_item_dates import WorkItemDates
-from pm_gateway.models.work_item_lifecycle import WorkItemLifecycle
-from pm_gateway.models.work_item_ref import WorkItemRef
-from pm_gateway.models.work_item_relationship import WorkItemRelationship
-from pm_gateway.models.workflow_state_ref import WorkflowStateRef
+from pm_gateway.generated.models.container import Container
+from pm_gateway.generated.models.container_ref import ContainerRef
+from pm_gateway.generated.models.estimate_value import EstimateValue
+from pm_gateway.generated.models.iteration_ref import IterationRef
+from pm_gateway.generated.models.label_ref import LabelRef
+from pm_gateway.generated.models.mapping_metadata import MappingMetadata
+from pm_gateway.generated.models.named_ref import NamedRef
+from pm_gateway.generated.models.principal_ref import PrincipalRef
+from pm_gateway.generated.models.priority_value import PriorityValue
+from pm_gateway.generated.models.source_metadata import SourceMetadata
+from pm_gateway.generated.models.work_item import WorkItem
+from pm_gateway.generated.models.work_item_dates import WorkItemDates
+from pm_gateway.generated.models.work_item_lifecycle import WorkItemLifecycle
+from pm_gateway.generated.models.work_item_ref import WorkItemRef
+from pm_gateway.generated.models.work_item_relationship import WorkItemRelationship
+from pm_gateway.generated.models.workflow_state_ref import WorkflowStateRef
 
 _PRIORITY_LEVELS = {
     "urgent": "highest",

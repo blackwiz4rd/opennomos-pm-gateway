@@ -14,21 +14,21 @@ from fastapi.responses import JSONResponse
 from pm_gateway.adapters.factory import open_provider, validate_provider_context
 from pm_gateway.adapters.normalization import normalize_state_category
 from pm_gateway.adapters.serialization import as_board, as_container, as_iteration, as_work_item
-from pm_gateway.apis.discovery_api_base import BaseDiscoveryApi
-from pm_gateway.apis.work_items_api_base import BaseWorkItemsApi
-from pm_gateway.apis.workflow_api_base import BaseWorkflowApi
-from pm_gateway.models.board_scope import BoardScope
-from pm_gateway.models.capabilities import Capabilities
-from pm_gateway.models.container_page import ContainerPage
-from pm_gateway.models.feature_capability import FeatureCapability
-from pm_gateway.models.iteration_page import IterationPage
-from pm_gateway.models.mapping_metadata import MappingMetadata
-from pm_gateway.models.provider_ref import ProviderRef
-from pm_gateway.models.workflow_state import WorkflowState
-from pm_gateway.models.workflow_state_page import WorkflowStatePage
-from pm_gateway.models.workspace import Workspace
-from pm_gateway.models.workspace_page import WorkspacePage
-from pm_gateway.models.work_item_page import WorkItemPage
+from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
+from pm_gateway.generated.apis.work_items_api_base import BaseWorkItemsApi
+from pm_gateway.generated.apis.workflow_api_base import BaseWorkflowApi
+from pm_gateway.generated.models.board_scope import BoardScope
+from pm_gateway.generated.models.capabilities import Capabilities
+from pm_gateway.generated.models.container_page import ContainerPage
+from pm_gateway.generated.models.feature_capability import FeatureCapability
+from pm_gateway.generated.models.iteration_page import IterationPage
+from pm_gateway.generated.models.mapping_metadata import MappingMetadata
+from pm_gateway.generated.models.provider_ref import ProviderRef
+from pm_gateway.generated.models.workflow_state import WorkflowState
+from pm_gateway.generated.models.workflow_state_page import WorkflowStatePage
+from pm_gateway.generated.models.workspace import Workspace
+from pm_gateway.generated.models.workspace_page import WorkspacePage
+from pm_gateway.generated.models.work_item_page import WorkItemPage
 
 logger = logging.getLogger("pm_gateway.adapters")
 

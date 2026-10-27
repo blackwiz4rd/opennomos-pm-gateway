@@ -6,9 +6,9 @@ from pathlib import Path
 
 import yaml
 
-from pm_gateway.apis.discovery_api_base import BaseDiscoveryApi
-from pm_gateway.apis.work_items_api_base import BaseWorkItemsApi
-from pm_gateway.apis.workflow_api_base import BaseWorkflowApi
+from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
+from pm_gateway.generated.apis.work_items_api_base import BaseWorkItemsApi
+from pm_gateway.generated.apis.workflow_api_base import BaseWorkflowApi
 from pm_gateway.impl.provider_api import _OPERATION_BASES, _UNSUPPORTED_OPERATIONS
 
 ROOT = Path(__file__).resolve().parents[2]

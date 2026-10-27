@@ -6,19 +6,20 @@ PACKAGE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd -- "${PACKAGE_DIR}/.." && pwd)"
 
 SPEC_PATH="${REPO_ROOT}/docs/reference/pm-api-openapi-v0.1.yaml"
-OUTPUT_PACKAGE_DIR="${PACKAGE_DIR}/src/pm_gateway"
+OUTPUT_GENERATED_DIR="${PACKAGE_DIR}/src/pm_gateway/generated"
 GENERATOR_CLI="${OPENAPI_GENERATOR_CLI:-openapi-generator-cli}"
 GENERATOR_VERSION="${OPENAPI_GENERATOR_VERSION:-7.24.0}"
 CHECK_ONLY=0
 
 usage() {
     cat <<EOF
-Usage: $0 [--check] [--spec PATH] [--package-dir PATH]
+Usage: $0 [--check] [--spec PATH] [--package-dir GENERATED_DIR]
 
 Generate the PM gateway's FastAPI server routes and models from the OpenAPI
-contract. Generated output is limited to pm_gateway/apis, pm_gateway/models,
-and pm_gateway/security_api.py; handwritten implementation modules are kept.
-With --check, compare those outputs without modifying the package.
+contract. Generated output is limited to pm_gateway/generated/apis,
+pm_gateway/generated/models, and pm_gateway/generated/security_api.py;
+handwritten implementation modules are kept. With --check, compare those
+outputs without modifying the package.
 
 Environment:
   OPENAPI_GENERATOR_CLI       CLI executable (default: openapi-generator-cli)
@@ -39,7 +40,7 @@ while (($#)); do
             ;;
         --package-dir)
             [[ $# -ge 2 ]] || { usage >&2; exit 2; }
-            OUTPUT_PACKAGE_DIR="$2"
+            OUTPUT_GENERATED_DIR="$2"
             shift 2
             ;;
         -h|--help)
@@ -84,7 +85,27 @@ trap 'rm -rf -- "$TEMP_ROOT"' EXIT
     --global-property="apiTests=false,modelTests=false"
 
 generated_package="${TEMP_ROOT}/generated/src/pm_gateway"
+generated_server_dir="${TEMP_ROOT}/generated-server"
 for required_path in "${generated_package}/apis" "${generated_package}/models" "${generated_package}/security_api.py"; do
+    if [[ ! -e "$required_path" ]]; then
+        printf 'Expected generated output is missing: %s\n' "$required_path" >&2
+        exit 1
+    fi
+done
+
+mkdir -p "$generated_server_dir"
+for generated_path in apis models security_api.py; do
+    cp -R -- "${generated_package}/${generated_path}" "$generated_server_dir/"
+done
+
+# Keep generated code in its own package namespace while preserving the
+# handwritten implementation package used by generated route dispatch.
+find "${generated_server_dir}/apis" "${generated_server_dir}/models" -type f -name '*.py' -exec \
+    sed -i -E 's/pm_gateway\.(apis|models|security_api)/pm_gateway.generated.\1/g' {} +
+sed -i -E 's/pm_gateway\.(apis|models|security_api)/pm_gateway.generated.\1/g' \
+    "${generated_server_dir}/security_api.py"
+
+for required_path in "${generated_server_dir}/apis" "${generated_server_dir}/models" "${generated_server_dir}/security_api.py"; do
     if [[ ! -e "$required_path" ]]; then
         printf 'Expected generated output is missing: %s\n' "$required_path" >&2
         exit 1
@@ -95,29 +116,29 @@ done
 # bounded integer query parameters as strict, which makes FastAPI reject valid
 # values such as `?limit=200` before the route runs. Keep their bounds while
 # allowing FastAPI to parse the query string into an integer.
-find "${generated_package}/apis" -type f -name '*.py' -exec \
+find "${generated_server_dir}/apis" -type f -name '*.py' -exec \
     sed -i 's/Field(le=200, strict=True, ge=1)/Field(le=200, ge=1)/g' {} +
 
 if ((CHECK_ONLY)); then
-    for current_path in "${OUTPUT_PACKAGE_DIR}/apis" "${OUTPUT_PACKAGE_DIR}/models" "${OUTPUT_PACKAGE_DIR}/security_api.py"; do
+    for current_path in "${OUTPUT_GENERATED_DIR}/apis" "${OUTPUT_GENERATED_DIR}/models" "${OUTPUT_GENERATED_DIR}/security_api.py"; do
         if [[ ! -e "$current_path" ]]; then
-            printf 'Generated output is missing from the package: %s\n' "$current_path" >&2
+        printf 'Generated output is missing from the package: %s\n' "$current_path" >&2
             exit 1
         fi
     done
 
     diff_status=0
     diff -ru --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' -- \
-        "${OUTPUT_PACKAGE_DIR}/apis" "${generated_package}/apis" || {
+        "${OUTPUT_GENERATED_DIR}/apis" "${generated_server_dir}/apis" || {
         status=$?
         ((status > diff_status)) && diff_status=$status
     }
     diff -ru --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' -- \
-        "${OUTPUT_PACKAGE_DIR}/models" "${generated_package}/models" || {
+        "${OUTPUT_GENERATED_DIR}/models" "${generated_server_dir}/models" || {
         status=$?
         ((status > diff_status)) && diff_status=$status
     }
-    diff -u -- "${OUTPUT_PACKAGE_DIR}/security_api.py" "${generated_package}/security_api.py" || {
+    diff -u -- "${OUTPUT_GENERATED_DIR}/security_api.py" "${generated_server_dir}/security_api.py" || {
         status=$?
         ((status > diff_status)) && diff_status=$status
     }
@@ -130,15 +151,15 @@ if ((CHECK_ONLY)); then
         exit "$diff_status"
     fi
 
-    printf 'Generated server code is up to date in %s\n' "$OUTPUT_PACKAGE_DIR"
+    printf 'Generated server code is up to date in %s\n' "$OUTPUT_GENERATED_DIR"
     exit 0
 fi
 
-mkdir -p "$OUTPUT_PACKAGE_DIR"
-rm -rf -- "${OUTPUT_PACKAGE_DIR}/apis" "${OUTPUT_PACKAGE_DIR}/models"
-rm -f -- "${OUTPUT_PACKAGE_DIR}/security_api.py"
-cp -R -- "${generated_package}/apis" "${OUTPUT_PACKAGE_DIR}/apis"
-cp -R -- "${generated_package}/models" "${OUTPUT_PACKAGE_DIR}/models"
-cp -- "${generated_package}/security_api.py" "${OUTPUT_PACKAGE_DIR}/security_api.py"
+mkdir -p "$OUTPUT_GENERATED_DIR"
+rm -rf -- "${OUTPUT_GENERATED_DIR}/apis" "${OUTPUT_GENERATED_DIR}/models"
+rm -f -- "${OUTPUT_GENERATED_DIR}/security_api.py"
+cp -R -- "${generated_server_dir}/apis" "${OUTPUT_GENERATED_DIR}/apis"
+cp -R -- "${generated_server_dir}/models" "${OUTPUT_GENERATED_DIR}/models"
+cp -- "${generated_server_dir}/security_api.py" "${OUTPUT_GENERATED_DIR}/security_api.py"
 
-printf 'Generated PM gateway server code in %s\n' "$OUTPUT_PACKAGE_DIR"
+printf 'Generated PM gateway server code in %s\n' "$OUTPUT_GENERATED_DIR"

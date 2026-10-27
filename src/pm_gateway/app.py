@@ -7,10 +7,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from pm_gateway.apis.discovery_api import router as discovery_router
-from pm_gateway.apis.work_items_api import router as work_items_router
-from pm_gateway.apis.workflow_api import router as workflow_router
-from pm_gateway.models.api_error import ApiError
+from pm_gateway.generated.apis.discovery_api import router as discovery_router
+from pm_gateway.generated.apis.work_items_api import router as work_items_router
+from pm_gateway.generated.apis.workflow_api import router as workflow_router
+from pm_gateway.generated.models.api_error import ApiError
 
 app = FastAPI(
     title="Project Management Interoperability API",
