@@ -1,15 +1,103 @@
-# OpenNomos PM Gateway
+# PM Gateway
 
-Python package providing both an in-process SDK and an optional standalone HTTP
-service for the draft PM interoperability API. It does not import OpenNomos
-backend code or share its database.
+Standalone, provider-neutral PM interoperability gateway, currently developed
+inside the OpenNomos repository. The Python package provides an in-process SDK
+and an optional HTTP service for the draft PM interoperability API. It does not
+import OpenNomos backend code or share its database, and is intended to be
+publishable and usable independently as a GitHub project. OpenNomos is one
+possible consumer, not the boundary of the gateway's product direction.
+
+## Current support and roadmap
+
+### Languages
+
+| Status | Support |
+| --- | --- |
+| Supported | Python 3.11+ for the in-process SDK and gateway service. |
+| HTTP clients | The REST API can be called from any language with an HTTP client; this package does not provide non-Python SDKs. |
+| Roadmap relationship | The [OpenNomos roadmap](../docs/product-requirements/roadmap.md#month-5--january-2027--architecture--microservices--acp-finishing) discusses Go for other OpenNomos services; it does not set this standalone tool's language direction. |
+
+### PM providers
+
+The table explicitly lists every product in the [field-mapping inventory](../docs/reference/pm-tool-openapi-field-mapping.md),
+plus Azure DevOps from the OpenNomos product roadmap. “Implemented” means an
+adapter is present in this package; it does not imply full feature parity. The
+provider test column means live/provider validation, not unit-test coverage.
+The roadmap-priority column records OpenNomos's current priorities for one
+consumer; it is not a commitment or prioritization for the standalone gateway.
+
+| Provider / product | Adapter status | Live/provider-tested | OpenNomos roadmap priority | Native model / qualification |
+| --- | --- | --- | --- | --- |
+| Jira | Implemented | Yes | Implemented | Issue |
+| Confluence | Future candidate | — | Unsequenced | Page/content by default; inline tasks can use a work-item profile |
+| Trello | Future candidate | — | Unsequenced | Card |
+| Plane | Implemented | Yes | Implemented | Work Item |
+| Smartsheet | Future candidate | — | Unsequenced | Row in an explicitly selected Sheet |
+| Microsoft Planner | Implemented | **No** | Implemented | `plannerTask`; unit normalization tests exist, but no live/provider validation |
+| Asana | Planned | — | Could | Task; preserve multi-project memberships |
+| monday.com | Planned | — | Could | Item with runtime board columns |
+| Airtable | Future candidate | — | Unsequenced | Record only after selecting/configuring a table |
+| Linear | Planned | — | Should | Issue |
+| ClickUp | Planned | — | Could | Task |
+| Notion | Future candidate | — | Unsequenced | Page/data-source item only by configuration |
+| Microsoft Project | Conditional | — | Unsequenced | Must choose a specific Project product/API family |
+| Wrike | Future candidate | — | Unsequenced | Task / Work Item |
+| Basecamp | Future candidate | — | Unsequenced | To-do/Card; Message is a separate content profile |
+| Zoho Projects | Planned | — | Could | Task; preserve API generation/layout differences |
+| GitHub Issues | Planned | — | Should | Issue; pull-request semantics are an extension |
+| GitLab Issues | Future candidate | — | Unsequenced | Issue / Work Item; model varies by GitLab version |
+| Azure DevOps | Roadmap candidate | — | Could | Product-roadmap target; not included in the 18-product field inventory |
+
+The OpenNomos Should/Could priorities come from the [PM integrations roadmap](../docs/product-requirements/roadmap.md#month-3--november-2026--pm-tool-integrations-scaling-source)
+and may change. They do not constrain the standalone gateway's future provider
+support. The 18 mapped products come from the
+[PM tools comparison](../docs/reference/pm-tools-comparison.md) and
+[field-mapping inventory](../docs/reference/pm-tool-openapi-field-mapping.md);
+“Future candidate” means mapped for possible support but not sequenced as an
+integration in that roadmap. Microsoft Project stays conditional until its API
+family is selected. Provider support is operation-specific; use
+`get_capabilities` to check the operations available for a particular provider.
+
+### Future interoperability scope
+
+The field-mapping inventory describes the intended direction for future provider
+adapters and richer operations. It covers 18 product entries; Azure DevOps is an
+additional product-roadmap candidate, not part of that field inventory. These
+are mapping proposals—not claims that every product or feature is implemented.
+Adapter work should prioritize:
+
+- **Discoverable custom fields:** fetch definitions, stable native IDs, types,
+  options, scope, and writability before mapping values. This is essential for
+  systems whose work-item shape is configured per project, board, sheet, table,
+  or data source.
+- **Faithful work-item semantics:** preserve native workflow states separately
+  from completion/progress; support multiple container memberships; and keep
+  parent/subtask structure distinct from typed relationships such as blocks,
+  duplicates, and dependencies.
+- **Optional capability profiles:** lifecycle/archive state, followers,
+  components and versions, cycles/iterations and milestones, time tracking,
+  comments, and attachments. Expose these only where the provider supports them
+  and report availability through capabilities.
+- **Native-value preservation:** retain provider-scoped identities, native
+  values and scales, and mapping quality. Do not infer priority from labels or
+  workflow status from percentages/list placement; use namespaced extensions
+  where no safe common field exists.
+
+Some sources require explicit configuration before they can be treated as work
+items: for example, Confluence pages are content by default, and Airtable or
+Notion records need a selected table/data source and field mapping. Microsoft
+Project also needs an explicitly named API family. Feature availability and
+field definitions can vary by connection or container, so provider-wide
+capability flags alone may be too coarse. See the
+[field-mapping inventory](../docs/reference/pm-tool-openapi-field-mapping.md)
+for the product-by-product crosswalk and mapping constraints.
 
 ## In-process SDK
 
-Install the root OpenNomos package (which includes the SDK source) or install
-this package directly. The SDK is asynchronous and calls the provider adapter
-in-process: you do not need to start the gateway service, configure a gateway
-bearer token, or make an HTTP request to the gateway.
+Install this package directly. While developing in the OpenNomos monorepo, use
+the editable install shown below. The SDK is asynchronous and calls the provider
+adapter in-process: you do not need to start the gateway service, configure a
+gateway bearer token, or make an HTTP request to the gateway.
 
 ```sh
 pip install -e ./pm-gateway
@@ -116,9 +204,10 @@ most 200. Provider/API errors are raised as `fastapi.HTTPException` with a
 status code and detail; handle these at your application boundary.
 
 Credentials are passed for each call and are not persisted by the SDK. Do not
-log credentials or include them in exception output. The OpenNomos backend uses
-this SDK directly: it resolves and decrypts stored credentials, then supplies
-them per operation.
+log credentials or include them in exception output. In the OpenNomos monorepo,
+the backend is one optional SDK consumer: it resolves and decrypts stored
+credentials, then supplies them per operation. The gateway itself does not
+depend on that backend.
 
 ## Generated server code
 
