@@ -192,7 +192,7 @@ def as_work_item(
     for key, relation in (
         ("blocks", "blocks"),
         ("blocked_by", "blocked_by"),
-        ("related", "related"),
+        ("related", "relates_to"),
         ("duplicates", "duplicates"),
     ):
         relationships.extend(

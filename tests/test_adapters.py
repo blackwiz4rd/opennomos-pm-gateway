@@ -165,3 +165,32 @@ async def test_generated_list_work_items_routes_to_selected_provider(
     assert payload["items"][0]["title"] == "Fix login"
     assert payload["items"][0]["status"]["category"] == "started"
     assert "additional_properties" not in response.text
+
+
+def test_serialized_relationship_types_and_extension_keys_follow_contract() -> None:
+    normalized = {
+        "id": "issue-1",
+        "title": "Fix login",
+        "state": "In Progress",
+        "state_id": "state-1",
+        "state_category": "started",
+        "blocks": ["issue-2"],
+        "related": ["issue-3"],
+        "duplicates": ["issue-4"],
+        "epic_name": "Epic",
+    }
+
+    item = as_work_item(
+        normalized,
+        provider="plane",
+        workspace_id="ws-1",
+        container_id="project-1",
+        base_url=None,
+    )
+    payload = item.to_dict()
+
+    relationship_types = {relationship["type"] for relationship in payload["relationships"]}
+    assert relationship_types == {"blocks", "relates_to", "duplicates"}
+
+    assert payload["extensions"] is not None
+    assert all(key.startswith("plane:") for key in payload["extensions"])
