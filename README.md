@@ -7,6 +7,74 @@ import OpenNomos backend code or share its database, and is intended to be
 publishable and usable independently as a GitHub project. OpenNomos is one
 possible consumer, not the boundary of the gateway's product direction.
 
+## Roadmap
+
+The gateway is built in the following order of priority:
+
+| # | Phase | Goal | Status |
+| --- | --- | --- | --- |
+| 1 | Standard | Provide a global standard terminology and API for project management tools (provider-neutral vocabulary + single OpenAPI contract). | In progress (v0.1 draft) |
+| 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner) |
+| 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | Planned |
+| 4 | SDKs | Provide SDK support for different programming languages beyond Python. | Planned |
+
+### 1. Global standard terminology and API
+
+Establish and stabilize a provider-neutral vocabulary (workspaces, containers, work items,
+workflow states, iterations, milestones, custom fields, comments, attachments, …) and a
+single OpenAPI contract (`docs/reference/pm-api-openapi-v0.1.yaml`) that every adapter
+implements. This is the foundation; adapter and SDK work depend on it. Generated server
+code and Pydantic models derive from this spec.
+
+### 2. Test & support different PM tools
+
+Implement adapters for the providers in the field-mapping inventory and validate them
+against live APIs where credentials allow. Report per-provider capabilities via
+`get_capabilities` so callers know what is supported. Broad, tested coverage is the
+immediate priority after the standard stabilizes.
+
+### 3. Compliance for unknown software, gateway as router
+
+Make it possible for any PM tool to become compliant with the standard on its own, so
+the gateway can simply re-route requests to it instead of maintaining a bespoke adapter.
+This means publishing a conformance specification and tests, and supporting a
+passthrough/router mode for compliant providers.
+
+#### Example: a small compliant PM tool ("TinyTasks")
+
+To make the compliance/routing idea concrete, consider `TinyTasks`, a deliberately small
+project-management app that implements the standard API directly. It is documentation
+only here (no shipped code); it shows the shape a third-party tool must expose so the
+gateway can treat it as a compliant provider and just re-route.
+
+- **Data model (minimal):** one workspace → many containers (projects) → work items.
+  Each work item carries the standard fields: `id`, `title`, `status`, `containerId`,
+  `workspaceId`, plus optional `assignee`, `priority`, `createdAt`, `updatedAt`.
+- **Implemented standard endpoints (subset):**
+  - `GET  /pm/v1/workspaces`
+  - `GET  /pm/v1/containers?workspaceId=...`
+  - `GET  /pm/v1/work-items?workspaceId=...&containerId=...`
+  - `GET  /pm/v1/work-items/{workItemId}`
+  - `PATCH /pm/v1/work-items/{workItemId}`
+- **Workflow states:** a fixed, small set exposed via `GET /pm/v1/workflow-states`,
+  e.g. `todo`, `in_progress`, `done`; transitions go through
+  `POST /pm/v1/work-items/{workItemId}/transitions`.
+- **Capabilities:** `GET /pm/v1/capabilities` reports only what TinyTasks supports
+  (e.g. `list_work_items`, `get_work_item`, `update_work_item`, `transition_work_item`;
+  no comments/attachments/custom fields), so callers degrade gracefully.
+- **Auth:** a single API token per workspace, passed by the gateway per request; TinyTasks
+  is stateless about gateway credentials and never stores them.
+
+Because TinyTasks speaks the standard contract, the gateway does not need a
+TinyTasks-specific adapter: it validates the tool against the conformance suite, then
+re-routes incoming requests to TinyTasks' base URL, translating only transport/auth
+concerns. Any other small PM tool can follow the same pattern to become compliant.
+### 4. SDK support for multiple languages
+
+Ship first-party SDKs beyond Python (e.g. TypeScript/JavaScript, Go, …) so consumers
+can use the standard API ergonomically in their own stack. The REST API remains callable
+from any language via HTTP in the meantime.
+
 ## Current support and roadmap
 
 ### Languages
@@ -26,27 +94,48 @@ provider test column means live/provider validation, not unit-test coverage.
 The roadmap-priority column records OpenNomos's current priorities for one
 consumer; it is not a commitment or prioritization for the standalone gateway.
 
-| Provider / product | Adapter status | Live/provider-tested | OpenNomos roadmap priority | Native model / qualification |
-| --- | --- | --- | --- | --- |
-| Jira | Implemented | Yes | Implemented | Issue |
-| Confluence | Future candidate | — | Unsequenced | Page/content by default; inline tasks can use a work-item profile |
-| Trello | Future candidate | — | Unsequenced | Card |
-| Plane | Implemented | Yes | Implemented | Work Item |
-| Smartsheet | Future candidate | — | Unsequenced | Row in an explicitly selected Sheet |
-| Microsoft Planner | Implemented | **No** | Implemented | `plannerTask`; unit normalization tests exist, but no live/provider validation |
-| Asana | Planned | — | Could | Task; preserve multi-project memberships |
-| monday.com | Planned | — | Could | Item with runtime board columns |
-| Airtable | Future candidate | — | Unsequenced | Record only after selecting/configuring a table |
-| Linear | Planned | — | Should | Issue |
-| ClickUp | Planned | — | Could | Task |
-| Notion | Future candidate | — | Unsequenced | Page/data-source item only by configuration |
-| Microsoft Project | Conditional | — | Unsequenced | Must choose a specific Project product/API family |
-| Wrike | Future candidate | — | Unsequenced | Task / Work Item |
-| Basecamp | Future candidate | — | Unsequenced | To-do/Card; Message is a separate content profile |
-| Zoho Projects | Planned | — | Could | Task; preserve API generation/layout differences |
-| GitHub Issues | Planned | — | Should | Issue; pull-request semantics are an extension |
-| GitLab Issues | Future candidate | — | Unsequenced | Issue / Work Item; model varies by GitLab version |
-| Azure DevOps | Roadmap candidate | — | Could | Product-roadmap target; not included in the 18-product field inventory |
+| Provider / product | Adapter status | Live/provider-tested | OpenNomos roadmap priority | Est. PM-category adoption (Ramp, Oct 2026) | Free-account API access / credential | Native model / qualification |
+| --- | --- | --- | --- | ---: | --- | --- |
+| Jira | Implemented | Yes | Implemented | [47%](https://ramp.com/vendors/jira) | [Yes — API token on Free Cloud](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) | Issue |
+| Confluence | Future candidate | — | Unsequenced | Not reported | [Yes — API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) on Free Cloud | Page/content by default; inline tasks can use a work-item profile |
+| Trello | Future candidate | — | Unsequenced | [7%](https://ramp.com/vendors/trello) | [Yes — API key + user token](https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/) | Card |
+| Plane | Implemented | Yes | Implemented | Not reported | [Yes — personal API key on Free](https://developers.plane.so/api-reference/introduction) | Work Item |
+| Smartsheet | Future candidate | — | Unsequenced | [9%](https://ramp.com/vendors/smartsheet) | [No — trial cannot issue API tokens](https://help.smartsheet.com/articles/529590-smartsheet-free-trial-faqs); Business/Enterprise required | Row in an explicitly selected Sheet |
+| Microsoft Planner | Implemented | **No** | Implemented | Not reported | [Conditional — OAuth, work/school tenant; personal accounts unsupported](https://learn.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0) | `plannerTask`; unit normalization tests exist, but no live/provider validation |
+| Asana | Planned | — | Could | [21%](https://ramp.com/vendors/asana) | [Yes — personal access token on Personal](https://developers.asana.com/docs/personal-access-token) | Task; preserve multi-project memberships |
+| monday.com | Planned | — | Could | [19%](https://ramp.com/vendors/monday) | [Yes — API token in free developer sandbox](https://developer.monday.com/api-reference/docs/developer-sandbox-account) | Item with runtime board columns |
+| Airtable | Future candidate | — | Unsequenced | [16%](https://ramp.com/vendors/airtable) | [Yes — personal access token on Free](https://support.airtable.com/articles/9934989703-creating-personal-access-tokens); Free API quota applies | Record only after selecting/configuring a table |
+| Linear | Planned | — | Should | [15%](https://ramp.com/vendors/linear) | [Yes — personal API key on Free](https://linear.app/developers/graphql) | Issue |
+| ClickUp | Planned | — | Could | [9%](https://ramp.com/vendors/clickup) | [Yes — personal API token on Free Forever](https://developer.clickup.com/docs/authentication) | Task |
+| Notion | Future candidate | — | Unsequenced | [32%](https://ramp.com/vendors/notion) | [Yes — internal integration token on Free](https://developers.notion.com/guides/get-started/internal-integrations); share pages with it | Page/data-source item only by configuration |
+| Microsoft Project | Conditional | — | Unsequenced | Not reported | Conditional — no generic Project API; choose a product/API family first | Must choose a specific Project product/API family |
+| Wrike | Future candidate | — | Unsequenced | [1%](https://ramp.com/vendors/wrike) | [Yes — permanent token or OAuth; API is free on Free plan](https://developers.wrike.com/docs/faq) | Task / Work Item |
+| Basecamp | Future candidate | — | Unsequenced | [4%](https://ramp.com/vendors/basecamp) | Free plan; [OAuth token, no API key](https://github.com/basecamp/bc-api/blob/master/sections/authentication.md); API docs don’t state a paid-plan requirement | To-do/Card; Message is a separate content profile |
+| Zoho Projects | Planned | — | Could | Not reported | [Yes — OAuth with a free Zoho account](https://www.zoho.com/projects/help/rest-api/get-tickets-api.html) | Task; preserve API generation/layout differences |
+| GitHub Issues | Planned | — | Should | Not reported | [Yes — personal access token on GitHub Free](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) | Issue; pull-request semantics are an extension |
+| GitLab Issues | Future candidate | — | Unsequenced | Not reported | [Yes — personal access token on GitLab Free](https://docs.gitlab.com/user/profile/personal_access_tokens/) | Issue / Work Item; model varies by GitLab version |
+| Azure DevOps | Roadmap candidate | — | Could | Not reported | [Yes — PAT; Basic is free for the first five users](https://learn.microsoft.com/en-us/azure/devops/organizations/billing/buy-basic-access-add-users?view=azure-devops) | Product-roadmap target; not included in the 18-product field inventory |
+
+The adoption estimates are Ramp Rate's share of businesses in its U.S. business
+dataset that purchased from the vendor among businesses purchasing in the
+Project Management category during the trailing 12 months. Ramp reports spend
+data from more than 85,000 businesses; this is a directional adoption proxy,
+**not global market share or revenue share**. Vendors can overlap, so percentages
+do not sum to 100%. “Not reported” means no comparable Ramp Project Management
+category estimate was found; do not substitute another category's figure or
+infer a value from the ETR market tiers. Snapshot checked 2026-10-28 against the
+linked [Ramp Rate Project Management category](https://ramp.com/vendors/categories/project-management)
+and vendor pages.
+
+Free-tier access describes whether a developer can obtain credentials and make
+test API calls without buying a plan; it does not guarantee every endpoint or
+feature is included. “API credential” includes personal access tokens and OAuth
+tokens, not just static API keys. Microsoft Planner requires a work/school
+tenant (Graph does not support personal Microsoft accounts); Smartsheet trial
+accounts cannot create API tokens; and Microsoft Project has no single API to
+test until its product family is selected. For GitHub/GitLab issues, use the
+vendor's Issues API and a test repository/project; the listed vendors may
+classify those products under DevOps rather than PM.
 
 The OpenNomos Should/Could priorities come from the [PM integrations roadmap](../docs/product-requirements/roadmap.md#month-3--november-2026--pm-tool-integrations-scaling-source)
 and may change. They do not constrain the standalone gateway's future provider
