@@ -7,24 +7,118 @@ backend code or share its database.
 ## In-process SDK
 
 Install the root OpenNomos package (which includes the SDK source) or install
-this package directly, then call it without starting a process or making an HTTP
-request:
+this package directly. The SDK is asynchronous and calls the provider adapter
+in-process: you do not need to start the gateway service, configure a gateway
+bearer token, or make an HTTP request to the gateway.
 
-```python
-from pm_gateway import PMGateway
-
-gateway = PMGateway()
-capabilities = await gateway.execute(
-    "get_capabilities",
-    provider="jira",
-    credential="email:api-token",
-    base_url="https://example.atlassian.net",
-)
+```sh
+pip install -e ./pm-gateway
 ```
 
-Credentials are passed for each call and are not persisted. The OpenNomos
-backend uses this SDK directly. It resolves/decrypts stored credentials and
-supplies them per operation.
+Create a `PMGateway` and pass the provider credentials on each `execute` call.
+Supported provider keys are `plane`, `jira`, and `planner`. Jira requires its
+site URL as `base_url`; Plane and Planner use their documented defaults unless
+you supply a URL. Credentials use the provider's expected format: Plane API
+token, Jira `email:api-token`, or Planner `tenant_id:client_id:client_secret`.
+Keep credentials in a secret store or environment variables, not in source
+control.
+
+```python
+import asyncio
+import os
+
+from pm_gateway import Operation, PMGateway, Provider
+
+async def main() -> None:
+    gateway = PMGateway()
+    provider = Provider.JIRA
+    credential = os.environ["JIRA_CREDENTIAL"]  # email:api-token
+    base_url = os.environ["JIRA_BASE_URL"]      # e.g. https://example.atlassian.net
+
+    # Check what this provider supports before relying on optional operations.
+    capabilities = await gateway.execute(
+        Operation.GET_CAPABILITIES,
+        provider=provider,
+        credential=credential,
+        base_url=base_url,
+    )
+    print(capabilities)
+
+    # IDs are provider-native. Find the workspace and container (project, plan,
+    # board, etc.) to use from your provider or the discovery operations.
+    workspace_id = "your-workspace-id"
+    containers = await gateway.execute(
+        Operation.LIST_CONTAINERS,
+        provider=provider,
+        credential=credential,
+        base_url=base_url,
+        workspaceId=workspace_id,
+        limit=50,
+    )
+    for container in containers.items:
+        print(container.id, container.name)
+
+asyncio.run(main())
+```
+
+`execute(operation, *, provider, credential, base_url=None, **params)` takes an
+`Operation` enum member and that operation's parameters. The `provider`
+argument takes a `Provider` enum member: `Provider.PLANE`, `Provider.JIRA`, or
+`Provider.PLANNER`. Use operation members such as
+`Operation.GET_CAPABILITIES`, `Operation.LIST_CONTAINERS`, or
+`Operation.LIST_WORK_ITEMS`; the enum is exported from `pm_gateway`. Parameter
+names follow the generated Python API signatures (for example, `workspaceId`,
+`containerId`, `workItemId`, and `changed_since`). Results are generated
+Pydantic model instances, not dictionaries: page results expose `items` and
+`next_cursor`, and individual resources expose their model fields.
+`list_workspaces` returns configured workspace slugs; pass them as
+`x_pm_workspace_slugs="team-a,team-b"`.
+To fetch work items and handle pagination, add this inside `main()` above,
+using the same `gateway`, `provider`, `credential`, `base_url`, and
+`workspace_id` values:
+
+```python
+    page = await gateway.execute(
+        Operation.LIST_WORK_ITEMS,
+        provider=provider,
+        credential=credential,
+        base_url=base_url,
+        workspaceId=workspace_id,
+        containerId="your-container-id",
+        limit=50,
+    )
+    for item in page.items:
+        print(item.id, item.title, item.status)
+
+    # Pass the opaque cursor back with the same query to fetch the next page.
+    if page.next_cursor:
+        next_page = await gateway.execute(
+            Operation.LIST_WORK_ITEMS,
+            provider=provider,
+            credential=credential,
+            base_url=base_url,
+            workspaceId=workspace_id,
+            containerId="your-container-id",
+            limit=50,
+            cursor=page.next_cursor,
+        )
+```
+
+Available operation names are `get_capabilities`, `list_workspaces`,
+`list_containers`, `list_boards`, `get_board_scope`,
+`list_custom_field_definitions`, `list_iterations`, `list_milestones`,
+`list_work_items`, `get_work_item`, `update_work_item`,
+`list_work_item_comments`, `list_work_item_attachments`,
+`list_workflow_states`, and `transition_work_item`. Optional operations may
+not be supported by every provider; consult `get_capabilities` and expect an
+unsupported-operation error when a feature is unavailable. Page sizes are at
+most 200. Provider/API errors are raised as `fastapi.HTTPException` with a
+status code and detail; handle these at your application boundary.
+
+Credentials are passed for each call and are not persisted by the SDK. Do not
+log credentials or include them in exception output. The OpenNomos backend uses
+this SDK directly: it resolves and decrypts stored credentials, then supplies
+them per operation.
 
 ## Generated server code
 
