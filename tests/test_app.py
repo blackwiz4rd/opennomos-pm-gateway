@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from pm_gateway.app import app
+from pm_gateway import PMGateway
 from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
 from pm_gateway.generated.models.container_page import ContainerPage
 
@@ -64,6 +65,27 @@ async def test_capabilities_are_scoped_to_the_request_provider(
     assert response.status_code == 200
     assert response.json()["provider"]["key"] == "plane"
     assert response.json()["features"]
+
+
+@pytest.mark.asyncio
+async def test_sdk_and_http_api_share_capabilities_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PM_GATEWAY_API_TOKEN", "expected-secret")
+    sdk_result = await PMGateway().execute(
+        "get_capabilities", provider="plane", credential="ephemeral-test-key"
+    )
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/pm/v1/capabilities",
+            headers={
+                "Authorization": "Bearer expected-secret",
+                "X-PM-Provider": "plane",
+                "X-PM-Provider-Credential": "ephemeral-test-key",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == sdk_result.to_dict()
 
 
 @pytest.mark.asyncio

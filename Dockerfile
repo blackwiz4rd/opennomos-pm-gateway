@@ -10,7 +10,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 
-RUN pip install --no-cache-dir . \
+RUN pip install --no-cache-dir '.[server]' \
     && adduser --disabled-password --gecos "" --uid 10001 gateway
 
 USER gateway

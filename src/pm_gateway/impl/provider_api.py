@@ -389,3 +389,49 @@ class GatewayWorkItemsApi(_ProviderApi, BaseWorkItemsApi):
 
 class GatewayWorkflowApi(_ProviderApi, BaseWorkflowApi):
     pass
+
+
+class PMGateway:
+    """In-process SDK facade over the same provider dispatch used by HTTP."""
+
+    async def execute(
+        self,
+        operation: str,
+        *,
+        provider: str,
+        credential: str,
+        base_url: str | None = None,
+        **params: Any,
+    ) -> Any:
+        if operation not in _OPERATION_BASES:
+            raise HTTPException(status_code=501, detail=f"Unknown operation: {operation}")
+        params = {
+            **params,
+            "x_pm_provider": provider,
+            "x_pm_provider_credential": credential,
+            "x_pm_provider_base_url": base_url,
+        }
+        if operation == "transition_work_item" and isinstance(
+            params.get("transition_request"), dict
+        ):
+            from pm_gateway.generated.models.transition_request import TransitionRequest
+
+            params["transition_request"] = TransitionRequest.model_validate(
+                params["transition_request"]
+            )
+        try:
+            return await _dispatch(operation, params, provider, credential, base_url)
+        except HTTPException:
+            raise
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.error("Provider %s failed during %s (%s)", provider, operation, type(exc).__name__)
+            status_code = getattr(exc, "status_code", None)
+            if status_code is None:
+                status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            if status_code == 429:
+                raise HTTPException(status_code=429, detail="The PM provider rate limit was reached.") from exc
+            if status_code == 404:
+                raise HTTPException(status_code=404, detail="The requested provider resource was not found.") from exc
+            raise HTTPException(status_code=502, detail="The PM provider request failed.") from exc
