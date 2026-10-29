@@ -23,6 +23,7 @@ outputs without modifying the package.
 Environment:
   OPENAPI_GENERATOR_CLI       CLI executable (default: openapi-generator-cli)
   OPENAPI_GENERATOR_VERSION   Required CLI version (default: 7.24.0)
+  PACKAGE_VERSION             Package version (default: setuptools-scm)
 EOF
 }
 
@@ -76,11 +77,11 @@ fi
 TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pm-gateway-openapi.XXXXXX")"
 trap 'rm -rf -- "$TEMP_ROOT"' EXIT
 
-PACKAGE_VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "${PACKAGE_DIR}/src/pm_gateway/_version.py")"
-if [[ -z "$PACKAGE_VERSION" ]]; then
-    printf 'Could not read the package version from %s\n' \
-        "${PACKAGE_DIR}/src/pm_gateway/_version.py" >&2
-    exit 1
+if [[ -z "${PACKAGE_VERSION:-}" ]]; then
+    if ! PACKAGE_VERSION="$(cd -- "${PACKAGE_DIR}" && python -m setuptools_scm)"; then
+        printf 'Could not determine the package version; install setuptools-scm and ensure git metadata is available.\n' >&2
+        exit 1
+    fi
 fi
 
 "$GENERATOR_CLI" generate \

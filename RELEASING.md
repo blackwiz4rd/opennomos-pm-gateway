@@ -19,7 +19,8 @@ git push pm-gateway opennomos-pm-gateway:main
 Notes:
 
 - `git subtree split` rewrites the `pm-gateway/` history so the directory
-  contents become the repository root.
+  contents become the repository root. Tags are not copied by the split; create
+  and push `v*` tags in the standalone repository.
 - `.github/workflows/ci.yml` is inert inside the monorepo but becomes the CI
   workflow in the standalone repository.
 - `OSLC.md` and `STANDARDIZATION_ROADMAP.md` are gitignored working drafts and
@@ -78,19 +79,32 @@ Before the first public release:
 
 ## 2. Version and changelog
 
-1. Update `src/pm_gateway/_version.py`.
-2. Add a matching entry to `CHANGELOG.md`.
-3. Confirm the version is valid PEP 440 (`0.1.0a1` for a pre-release, `0.1.0` for
-   a final release).
-4. If the contract changed, edit `spec/pm-api-openapi-v0.1.yaml` and regenerate:
+The package version is derived from git tags by `setuptools-scm`; do not edit
+`src/pm_gateway/_version.py`. It reads the installed distribution metadata and
+only contains a fallback for the vendored monorepo copy or an uninstalled source
+tree.
+
+1. Decide the next PEP 440 version (`0.1.0a2` for a pre-release, `0.1.0` for a
+   final release) and add a matching entry to `CHANGELOG.md`.
+2. If the contract changed, edit `spec/pm-api-openapi-v0.1.yaml` and regenerate:
 
    ```sh
    ./scripts/generate-server.sh
    ```
 
-5. If the OpenNomos docs mirror still exists, copy the spec to
+3. If the OpenNomos docs mirror still exists, copy the spec to
    `docs/reference/pm-api-openapi-v0.1.yaml` and run `python -m pytest` (the
    mirror test fails on drift).
+
+### Version baseline
+
+The already-published `0.1.0a1` predates tag-derived versioning. If the
+standalone repository has no `v*` tag, the CI version job creates a temporary
+local `v0.1.0a1` tag on the root commit for version calculation only; it is not
+pushed. Main-branch builds therefore use `0.1.0a2.devN`, which remains ordered
+after `0.1.0a1`. The first real release tag (for example, `v0.1.0a2`) becomes
+the permanent baseline; do not push a `v0.1.0a1` tag unless you intend to reset
+the development version counter.
 
 ## 3. Local verification
 
@@ -103,6 +117,12 @@ python -m pytest
 python -m build
 python -m twine check dist/*
 ```
+
+`setuptools-scm` reads the version from the git tag and history. A shallow
+checkout, or a source tree without `.git`, needs
+`SETUPTOOLS_SCM_PRETEND_VERSION` set to an explicit PEP 440 version. The Docker
+build accepts this as `--build-arg PM_GATEWAY_VERSION=...` and defaults to
+`0.0.0` for local image builds.
 
 Then, in a clean virtual environment:
 
@@ -123,8 +143,10 @@ prints the "install the server extra" message instead of a traceback.
 python -m twine upload --repository testpypi dist/*
 ```
 
-Or run the **ci** workflow manually (`workflow_dispatch`); it builds and uploads
-to TestPyPI through trusted publishing.
+The **ci** workflow also builds and uploads every push to `main` to TestPyPI
+through trusted publishing. You can run it manually (`workflow_dispatch`) as
+well. Re-running the same commit is safe because the publish action is configured
+with `skip-existing: true`.
 
 Install from TestPyPI with the real PyPI index as a dependency fallback:
 
@@ -136,14 +158,15 @@ pip install --index-url https://test.pypi.org/simple/ \
 
 ## 5. Publish
 
-1. Tag the release:
+1. Tag the release. The tag is the version; no version file edit is needed:
 
    ```sh
-   git tag v0.1.0a1
-   git push origin v0.1.0a1
+   git tag -a v0.1.0a2 -m "opennomos-pm-gateway 0.1.0a2"
+   git push origin v0.1.0a2
    ```
 
-2. The `publish` job builds, checks metadata, and uploads to PyPI.
+2. The `publish` job builds, checks metadata, and uploads that exact version to
+   PyPI.
 3. Verify that the PyPI project page renders the README, license, and links.
 
 PyPI versions are immutable. If a release is wrong, bump the version; do not try

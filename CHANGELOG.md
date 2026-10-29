@@ -4,6 +4,14 @@ All notable changes to `opennomos-pm-gateway` are documented here. The package
 follows [Semantic Versioning](https://semver.org/); the HTTP contract is
 versioned separately in the OpenAPI document.
 
+## [Unreleased]
+
+### Changed
+
+- Package versions are derived from git tags with `setuptools-scm`.
+- Main-branch builds publish development versions to TestPyPI automatically;
+  tagged `v*` releases publish the exact tag version to PyPI.
+
 ## [0.1.0a1] - 2026-10-29
 
 First alpha technical preview.
