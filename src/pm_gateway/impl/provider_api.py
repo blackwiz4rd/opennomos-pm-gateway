@@ -6,28 +6,34 @@ import inspect
 import logging
 from datetime import timezone
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from pm_gateway.adapters.factory import open_provider, validate_provider_context
+from pm_gateway.adapters.factory import normalize_provider, open_provider, validate_provider_context
 from pm_gateway.adapters.normalization import normalize_state_category
 from pm_gateway.adapters.serialization import as_board, as_container, as_iteration, as_work_item
 from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
 from pm_gateway.generated.apis.work_items_api_base import BaseWorkItemsApi
 from pm_gateway.generated.apis.workflow_api_base import BaseWorkflowApi
+from pm_gateway.generated.models.attachment_page import AttachmentPage
 from pm_gateway.generated.models.board_scope import BoardScope
 from pm_gateway.generated.models.capabilities import Capabilities
+from pm_gateway.generated.models.comment_page import CommentPage
 from pm_gateway.generated.models.container_page import ContainerPage
+from pm_gateway.generated.models.custom_field_definition_page import CustomFieldDefinitionPage
 from pm_gateway.generated.models.feature_capability import FeatureCapability
 from pm_gateway.generated.models.iteration_page import IterationPage
 from pm_gateway.generated.models.mapping_metadata import MappingMetadata
+from pm_gateway.generated.models.milestone_page import MilestonePage
 from pm_gateway.generated.models.provider_ref import ProviderRef
 from pm_gateway.generated.models.workflow_state import WorkflowState
 from pm_gateway.generated.models.workflow_state_page import WorkflowStatePage
 from pm_gateway.generated.models.workspace import Workspace
 from pm_gateway.generated.models.workspace_page import WorkspacePage
+from pm_gateway.generated.models.work_item import WorkItem
 from pm_gateway.generated.models.work_item_page import WorkItemPage
 
 logger = logging.getLogger("pm_gateway.adapters")
@@ -188,7 +194,8 @@ def _unsupported(operation: str) -> None:
 async def _run(operation: str, args: tuple, kwargs: dict):
     base = _OPERATION_BASES[operation]
     params = _arguments(base, operation, args, kwargs)
-    provider = params.get("x_pm_provider")
+    provider = normalize_provider(params.get("x_pm_provider"))
+    params["x_pm_provider"] = provider
     credential = params.get("x_pm_provider_credential")
     base_url = params.get("x_pm_provider_base_url")
 
@@ -212,8 +219,233 @@ async def _run(operation: str, args: tuple, kwargs: dict):
         raise HTTPException(status_code=502, detail="The PM provider request failed.") from exc
 
 
+def _as_datetime(value: Any) -> str | None:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _request_body(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        # exclude_unset preserves RFC 7386 merge-patch semantics: fields the
+        # caller omitted stay absent from the body while explicitly-set nulls
+        # are kept and clear the field on the remote implementation.
+        return value.model_dump(by_alias=True, exclude_unset=True)
+    if hasattr(value, "to_dict"):
+        return value.to_dict()
+    return value
+
+
+def _segment(value: Any) -> str:
+    """Percent-encode an ID before interpolating it into an upstream URL path.
+
+    Without this, a client-supplied value such as ``../../admin`` escapes the
+    route template on the remote host (and the provider credential is attached
+    to the resulting request).
+    """
+    return quote(str(value), safe="")
+
+
+class _Proxied:
+    """Dispatch result that also carries upstream response headers."""
+
+    def __init__(self, payload: Any, headers: dict[str, str]):
+        self.payload = payload
+        self.headers = headers
+
+
+def _maybe_proxied(payload: Any, captured: dict[str, str]) -> Any:
+    etag = captured.get("etag")
+    if etag:
+        return _Proxied(payload, {"ETag": etag})
+    return payload
+
+
+async def _forward_page(
+    adapter: Any,
+    model_cls: Any,
+    path: str,
+    params: dict[str, Any],
+    headers: dict[str, str] | None = None,
+) -> Any:
+    data = await adapter.request(
+        "GET",
+        path,
+        params={"cursor": params.get("cursor"), "limit": params.get("limit")},
+        headers=headers,
+    )
+    return model_cls.from_dict(data)
+
+
+async def _dispatch_compliant(operation: str, params: dict[str, Any], adapter: Any) -> Any:
+    """Forward a standard operation to a service that implements this contract.
+
+    The remote payload is already expressed in the standard wire format, so it is
+    parsed into the generated models without passing through native-provider
+    normalization. Path IDs are percent-encoded so client-supplied values can
+    never escape the route template on the remote host. Revision tokens
+    (``ETag``) returned by work-item reads and writes are propagated so
+    conditional updates with ``If-Match`` work end-to-end through the gateway.
+    """
+    workspace_id = (
+        _segment(params["workspaceId"]) if params.get("workspaceId") is not None else None
+    )
+    container_id = params.get("containerId") or params.get("container_id")
+    container_path = _segment(container_id) if container_id is not None else None
+    work_item_id = _segment(params["workItemId"]) if params.get("workItemId") is not None else None
+
+    if operation == "get_capabilities":
+        data = await adapter.request("GET", "/capabilities")
+        return Capabilities.from_dict(data)
+
+    if operation == "list_workspaces":
+        headers = {}
+        if params.get("x_pm_workspace_slugs"):
+            headers["X-PM-Workspace-Slugs"] = params.get("x_pm_workspace_slugs")
+        return await _forward_page(adapter, WorkspacePage, "/workspaces", params, headers)
+
+    if operation == "list_containers":
+        return await _forward_page(
+            adapter, ContainerPage, f"/workspaces/{workspace_id}/containers", params
+        )
+
+    if operation == "list_boards":
+        return await _forward_page(
+            adapter,
+            ContainerPage,
+            f"/workspaces/{workspace_id}/containers/{container_path}/boards",
+            params,
+        )
+
+    if operation == "get_board_scope":
+        data = await adapter.request(
+            "GET",
+            f"/workspaces/{workspace_id}/containers/{container_path}/board-scope",
+            params={
+                "boardId": params.get("board_id"),
+                "iterationIds": params.get("iteration_ids"),
+            },
+        )
+        return BoardScope.from_dict(data)
+
+    if operation == "list_custom_field_definitions":
+        return await _forward_page(
+            adapter,
+            CustomFieldDefinitionPage,
+            f"/workspaces/{workspace_id}/containers/{container_path}/custom-fields",
+            params,
+        )
+
+    if operation == "list_iterations":
+        data = await adapter.request(
+            "GET",
+            f"/workspaces/{workspace_id}/containers/{container_path}/iterations",
+            params={
+                "cursor": params.get("cursor"),
+                "limit": params.get("limit"),
+                "boardId": params.get("board_id"),
+            },
+        )
+        return IterationPage.from_dict(data)
+
+    if operation == "list_milestones":
+        return await _forward_page(
+            adapter,
+            MilestonePage,
+            f"/workspaces/{workspace_id}/containers/{container_path}/milestones",
+            params,
+        )
+
+    if operation == "list_work_items":
+        data = await adapter.request(
+            "GET",
+            f"/workspaces/{workspace_id}/containers/{container_path}/work-items",
+            params={
+                "cursor": params.get("cursor"),
+                "limit": params.get("limit"),
+                "changedSince": _as_datetime(params.get("changed_since")),
+                "stateId": params.get("state_id"),
+                "assigneeId": params.get("assignee_id"),
+                "archived": params.get("archived"),
+                "deleted": params.get("deleted"),
+                "query": params.get("query"),
+                "sort": params.get("sort"),
+                "boardId": params.get("board_id"),
+                "iterationIds": params.get("iteration_ids"),
+            },
+        )
+        return WorkItemPage.from_dict(data)
+
+    if operation == "get_work_item":
+        captured: dict[str, str] = {}
+        data = await adapter.request(
+            "GET",
+            f"/workspaces/{workspace_id}/work-items/{work_item_id}",
+            params={"containerId": container_id},
+            response_headers=captured,
+        )
+        return _maybe_proxied(WorkItem.from_dict(data), captured)
+
+    if operation == "update_work_item":
+        captured = {}
+        data = await adapter.request(
+            "PATCH",
+            f"/workspaces/{workspace_id}/work-items/{work_item_id}",
+            params={"containerId": container_id},
+            json=_request_body(params.get("work_item_patch")),
+            headers={"If-Match": params.get("if_match")} if params.get("if_match") else None,
+            response_headers=captured,
+        )
+        return _maybe_proxied(WorkItem.from_dict(data), captured)
+
+    if operation == "list_work_item_comments":
+        return await _forward_page(
+            adapter,
+            CommentPage,
+            f"/workspaces/{workspace_id}/work-items/{work_item_id}/comments",
+            params,
+        )
+
+    if operation == "list_work_item_attachments":
+        return await _forward_page(
+            adapter,
+            AttachmentPage,
+            f"/workspaces/{workspace_id}/work-items/{work_item_id}/attachments",
+            params,
+        )
+
+    if operation == "list_workflow_states":
+        data = await adapter.request(
+            "GET",
+            f"/workspaces/{workspace_id}/containers/{container_path}/workflow-states",
+            params={"boardId": params.get("board_id")},
+        )
+        return WorkflowStatePage.from_dict(data)
+
+    if operation == "transition_work_item":
+        captured = {}
+        data = await adapter.request(
+            "POST",
+            f"/workspaces/{workspace_id}/work-items/{work_item_id}/transitions",
+            params={"containerId": container_id},
+            json=_request_body(params.get("transition_request")),
+            headers={"If-Match": params.get("if_match")} if params.get("if_match") else None,
+            response_headers=captured,
+        )
+        return _maybe_proxied(WorkItem.from_dict(data), captured)
+
+    raise HTTPException(status_code=501, detail=f"Unknown operation: {operation}")
+
+
 async def _dispatch(operation: str, params: dict[str, Any], provider: str, credential: str, base_url: str | None):
+    provider = normalize_provider(provider)
+    params["x_pm_provider"] = provider
     validate_provider_context(provider, credential, base_url)
+    if provider == "compliant":
+        async with open_provider(provider, credential, base_url) as adapter:
+            return await _dispatch_compliant(operation, params, adapter)
     workspace_id = params.get("workspaceId")
     container_id = params.get("containerId") or params.get("container_id")
     work_item_id = params.get("workItemId")
@@ -361,7 +593,14 @@ class _ProviderApi:
 
             async def invoke(*args, **kwargs):
                 result = await _run(name, args, kwargs)
-                return JSONResponse(content=jsonable_encoder(_wire_value(result)))
+                headers = None
+                if isinstance(result, _Proxied):
+                    headers = result.headers
+                    result = result.payload
+                return JSONResponse(
+                    content=jsonable_encoder(_wire_value(result)),
+                    headers=headers,
+                )
 
             return invoke
         return object.__getattribute__(self, name)
@@ -405,6 +644,7 @@ class PMGateway:
     ) -> Any:
         if operation not in _OPERATION_BASES:
             raise HTTPException(status_code=501, detail=f"Unknown operation: {operation}")
+        provider = normalize_provider(provider)
         params = {
             **params,
             "x_pm_provider": provider,
@@ -420,7 +660,7 @@ class PMGateway:
                 params["transition_request"]
             )
         try:
-            return await _dispatch(operation, params, provider, credential, base_url)
+            result = await _dispatch(operation, params, provider, credential, base_url)
         except HTTPException:
             raise
         except ValueError as exc:
@@ -435,3 +675,6 @@ class PMGateway:
             if status_code == 404:
                 raise HTTPException(status_code=404, detail="The requested provider resource was not found.") from exc
             raise HTTPException(status_code=502, detail="The PM provider request failed.") from exc
+        if isinstance(result, _Proxied):
+            return result.payload
+        return result

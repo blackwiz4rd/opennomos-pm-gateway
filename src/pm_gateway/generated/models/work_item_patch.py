@@ -227,26 +227,10 @@ class WorkItemPatch(BaseModel):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
-        _obj = cls.model_validate({
-            "title": obj.get("title"),
-            "description": obj.get("description"),
-            "priority": PriorityValue.from_dict(obj.get("priority")) if obj.get("priority") is not None else None,
-            "estimate": EstimateValue.from_dict(obj.get("estimate")) if obj.get("estimate") is not None else None,
-            "assignees": [PrincipalRef.from_dict(_item) for _item in obj.get("assignees")] if obj.get("assignees") is not None else None,
-            "dates": WorkItemDates.from_dict(obj.get("dates")) if obj.get("dates") is not None else None,
-            "itemType": NamedRef.from_dict(obj.get("itemType")) if obj.get("itemType") is not None else None,
-            "memberships": [ContainerRef.from_dict(_item) for _item in obj.get("memberships")] if obj.get("memberships") is not None else None,
-            "parent": WorkItemRef.from_dict(obj.get("parent")) if obj.get("parent") is not None else None,
-            "labels": [LabelRef.from_dict(_item) for _item in obj.get("labels")] if obj.get("labels") is not None else None,
-            "components": [NamedRef.from_dict(_item) for _item in obj.get("components")] if obj.get("components") is not None else None,
-            "versions": [NamedRef.from_dict(_item) for _item in obj.get("versions")] if obj.get("versions") is not None else None,
-            "lifecycle": WorkItemLifecycle.from_dict(obj.get("lifecycle")) if obj.get("lifecycle") is not None else None,
-            "followers": [PrincipalRef.from_dict(_item) for _item in obj.get("followers")] if obj.get("followers") is not None else None,
-            "iteration": IterationRef.from_dict(obj.get("iteration")) if obj.get("iteration") is not None else None,
-            "milestones": [MilestoneRef.from_dict(_item) for _item in obj.get("milestones")] if obj.get("milestones") is not None else None,
-            "timeTracking": TimeTracking.from_dict(obj.get("timeTracking")) if obj.get("timeTracking") is not None else None,
-            "customFields": [CustomFieldValue.from_dict(_item) for _item in obj.get("customFields")] if obj.get("customFields") is not None else None
-        })
+        # Keep only the keys present in the payload: model_validate marks
+        # absent fields as unset, preserving RFC 7386 merge-patch
+        # semantics for omitted fields versus explicit nulls.
+        _obj = cls.model_validate(obj)
         return _obj
 
 

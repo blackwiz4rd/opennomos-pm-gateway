@@ -1,11 +1,29 @@
 # PM Gateway
 
-Standalone, provider-neutral PM interoperability gateway, currently developed
-inside the OpenNomos repository. The Python package provides an in-process SDK
-and an optional HTTP service for the draft PM interoperability API. It does not
-import OpenNomos backend code or share its database, and is intended to be
-publishable and usable independently as a GitHub project. OpenNomos is one
-possible consumer, not the boundary of the gateway's product direction.
+Standalone, provider-neutral project-management interoperability SDK and
+optional HTTP gateway. The Python package provides an in-process SDK and an HTTP
+service for the draft PM interoperability API. It does not import OpenNomos
+backend code or share its database, and is designed to be usable independently
+of OpenNomos.
+
+> **Status:** `0.1.0a1` alpha technical preview. The Python API and the draft
+> contract may change before 1.0. Microsoft Planner has not been validated
+> against a live tenant.
+
+## Install
+
+Requires Python 3.11 or newer.
+
+```sh
+# SDK only
+pip install pm-gateway
+
+# SDK plus the optional HTTP service
+pip install 'pm-gateway[server]'
+```
+
+OpenNomos is one possible consumer, not the boundary of the gateway's product
+direction.
 
 ## Roadmap
 
@@ -15,16 +33,17 @@ The gateway is built in the following order of priority:
 | --- | --- | --- | --- |
 | 1 | Standard | Provide a global standard terminology and API for project management tools (provider-neutral vocabulary + single OpenAPI contract). | In progress (v0.1 draft) |
 | 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner) |
-| 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | Planned |
+| 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | In progress (compliant provider routing) |
 | 4 | SDKs | Provide SDK support for different programming languages beyond Python. | Planned |
 
 ### 1. Global standard terminology and API
 
 Establish and stabilize a provider-neutral vocabulary (workspaces, containers, work items,
 workflow states, iterations, milestones, custom fields, comments, attachments, …) and a
-single OpenAPI contract (`docs/reference/pm-api-openapi-v0.1.yaml`) that every adapter
-implements. This is the foundation; adapter and SDK work depend on it. Generated server
-code and Pydantic models derive from this spec.
+single OpenAPI contract
+([`pm-api-openapi-v0.1.yaml`](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-api-openapi-v0.1.yaml))
+that every adapter implements. This is the foundation; adapter and SDK work depend on it.
+Generated server code and Pydantic models derive from this spec.
 
 ### 2. Test & support different PM tools
 
@@ -83,11 +102,12 @@ from any language via HTTP in the meantime.
 | --- | --- |
 | Supported | Python 3.11+ for the in-process SDK and gateway service. |
 | HTTP clients | The REST API can be called from any language with an HTTP client; this package does not provide non-Python SDKs. |
-| Roadmap relationship | The [OpenNomos roadmap](../docs/product-requirements/roadmap.md#month-5--january-2027--architecture--microservices--acp-finishing) discusses Go for other OpenNomos services; it does not set this standalone tool's language direction. |
+| Roadmap relationship | The [OpenNomos roadmap](https://github.com/blackwiz4rd/opennomos/blob/main/docs/product-requirements/roadmap.md#month-5--january-2027--architecture--microservices--acp-finishing) discusses Go for other OpenNomos services; it does not set this standalone tool's language direction. |
 
 ### PM providers
 
-The table explicitly lists every product in the [field-mapping inventory](../docs/reference/pm-tool-openapi-field-mapping.md),
+The table explicitly lists every product in the
+[field-mapping inventory](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tool-openapi-field-mapping.md),
 plus Azure DevOps from the OpenNomos product roadmap. “Implemented” means an
 adapter is present in this package; it does not imply full feature parity. The
 provider test column means live/provider validation, not unit-test coverage.
@@ -137,11 +157,13 @@ test until its product family is selected. For GitHub/GitLab issues, use the
 vendor's Issues API and a test repository/project; the listed vendors may
 classify those products under DevOps rather than PM.
 
-The OpenNomos Should/Could priorities come from the [PM integrations roadmap](../docs/product-requirements/roadmap.md#month-3--november-2026--pm-tool-integrations-scaling-source)
+The OpenNomos Should/Could priorities come from the
+[PM integrations roadmap](https://github.com/blackwiz4rd/opennomos/blob/main/docs/product-requirements/roadmap.md#month-3--november-2026--pm-tool-integrations-scaling-source)
 and may change. They do not constrain the standalone gateway's future provider
 support. The 18 mapped products come from the
-[PM tools comparison](../docs/reference/pm-tools-comparison.md) and
-[field-mapping inventory](../docs/reference/pm-tool-openapi-field-mapping.md);
+[PM tools comparison](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tools-comparison.md)
+and
+[field-mapping inventory](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tool-openapi-field-mapping.md);
 “Future candidate” means mapped for possible support but not sequenced as an
 integration in that roadmap. Microsoft Project stays conditional until its API
 family is selected. Provider support is operation-specific; use
@@ -178,27 +200,30 @@ Notion records need a selected table/data source and field mapping. Microsoft
 Project also needs an explicitly named API family. Feature availability and
 field definitions can vary by connection or container, so provider-wide
 capability flags alone may be too coarse. See the
-[field-mapping inventory](../docs/reference/pm-tool-openapi-field-mapping.md)
+[field-mapping inventory](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tool-openapi-field-mapping.md)
 for the product-by-product crosswalk and mapping constraints.
 
 ## In-process SDK
 
-Install this package directly. While developing in the OpenNomos monorepo, use
-the editable install shown below. The SDK is asynchronous and calls the provider
+Install the package from PyPI:
+
+```sh
+pip install pm-gateway
+```
+
+For development inside the OpenNomos monorepo, use the editable install in
+[Development](#development). The SDK is asynchronous and calls the provider
 adapter in-process: you do not need to start the gateway service, configure a
 gateway bearer token, or make an HTTP request to the gateway.
 
-```sh
-pip install -e ./pm-gateway
-```
-
 Create a `PMGateway` and pass the provider credentials on each `execute` call.
-Supported provider keys are `plane`, `jira`, and `planner`. Jira requires its
-site URL as `base_url`; Plane and Planner use their documented defaults unless
-you supply a URL. Credentials use the provider's expected format: Plane API
-token, Jira `email:api-token`, or Planner `tenant_id:client_id:client_secret`.
-Keep credentials in a secret store or environment variables, not in source
-control.
+Supported provider keys are `plane`, `jira`, `planner`, and `compliant`. Jira and
+compliant providers require their site URL as `base_url`; Plane and Planner use
+their documented defaults unless you supply a URL. Credentials use the provider's
+expected format: Plane API token, Jira `email:api-token`, Planner
+`tenant_id:client_id:client_secret`, or, for a compliant provider, the bearer
+token accepted by the remote service. Keep credentials in a secret store or
+environment variables, not in source control.
 
 ```python
 import asyncio
@@ -240,8 +265,8 @@ asyncio.run(main())
 
 `execute(operation, *, provider, credential, base_url=None, **params)` takes an
 `Operation` enum member and that operation's parameters. The `provider`
-argument takes a `Provider` enum member: `Provider.PLANE`, `Provider.JIRA`, or
-`Provider.PLANNER`. Use operation members such as
+argument takes a `Provider` enum member: `Provider.PLANE`, `Provider.JIRA`,
+`Provider.PLANNER`, or `Provider.COMPLIANT`. Use operation members such as
 `Operation.GET_CAPABILITIES`, `Operation.LIST_CONTAINERS`, or
 `Operation.LIST_WORK_ITEMS`; the enum is exported from `pm_gateway`. Parameter
 names follow the generated Python API signatures (for example, `workspaceId`,
@@ -298,10 +323,67 @@ the backend is one optional SDK consumer: it resolves and decrypts stored
 credentials, then supplies them per operation. The gateway itself does not
 depend on that backend.
 
+### Compliant providers (passthrough)
+
+A `compliant` provider is third-party software that implements the standard
+OpenAPI contract directly. The gateway does not map that software's native model
+through an adapter. Instead, it forwards the standard operation to the remote
+service and returns the remote standard payload unchanged (parsed into the
+generated models). This lets an unknown PM tool become usable without a
+bespoke adapter.
+
+```python
+gateway = PMGateway()
+page = await gateway.execute(
+    Operation.LIST_WORK_ITEMS,
+    provider=Provider.COMPLIANT,
+    credential=os.environ["COMPLIANT_TOKEN"],  # sent as Authorization: Bearer
+    base_url="https://tools.example.com",      # /pm/v1 appended if absent
+    workspaceId="workspace-1",
+    containerId="project-1",
+)
+```
+
+Rules for compliant providers:
+
+- `base_url` is required and must be an absolute HTTP(S) URL without embedded
+  credentials, a query, or a fragment. If the path does not already end with
+  `/pm/v1` (case-insensitive), the gateway appends it. The remote service must
+  therefore expose the standard operations under that base path. Use `https` in
+  production: the provider credential is sent to whatever host is configured.
+- The provider credential is forwarded only as `Authorization: Bearer <token>`.
+  Gateway-side headers such as `X-PM-Provider`, `X-PM-Provider-Credential`, and
+  `X-PM-Provider-Base-Url` are not sent upstream. When `list_workspaces` is
+  called with `x_pm_workspace_slugs`, that value is forwarded as
+  `X-PM-Workspace-Slugs`.
+- All standard operations are forwarded, including query filters such as
+  `changedSince`, `stateId`, `assigneeId`, `boardId`, and `iterationIds`.
+  Path IDs (`workspaceId`, `containerId`, `workItemId`) are percent-encoded
+  before being placed in the upstream URL, so a client-supplied value cannot
+  escape the standard route template on the remote host.
+- `update_work_item` forwards standard merge-patch semantics: fields the caller
+  omitted are left out of the upstream body (unchanged remotely) while explicit
+  `null` values clear the field. This holds for plain-dict payloads and for
+  generated `WorkItemPatch` models alike.
+- Work-item reads and writes propagate the upstream `ETag` on responses, and
+  `If-Match` is forwarded on `update_work_item` and `transition_work_item`, so
+  conditional updates work end-to-end through the gateway.
+- Upstream HTTP errors are surfaced as `fastapi.HTTPException` with the remote
+  status code and the remote `message`/`detail` when available; a remote
+  `Retry-After` header (for example on `429`) is forwarded to the caller. A
+  remote implementation that does not support an optional operation should
+  return the appropriate standard error itself.
+- The remote implementation is assumed to be a standalone standard API, not
+  another pm-gateway instance behind the same auth middleware.
+
+The same behavior is available over HTTP: send `X-PM-Provider: compliant`,
+`X-PM-Provider-Credential`, and `X-PM-Provider-Base-Url` with each request.
+
 ## Generated server code
 
-The OpenAPI document at `../docs/reference/pm-api-openapi-v0.1.yaml` is the
-contract source. Generated API routes and models are grouped under
+The OpenAPI document at
+[`docs/reference/pm-api-openapi-v0.1.yaml`](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-api-openapi-v0.1.yaml)
+is the contract source. Generated API routes and models are grouped under
 `src/pm_gateway/generated/` (APIs, models, and `security_api.py`). **Do not edit
 those generated files by hand.** Implementations belong under
 `src/pm_gateway/impl/` and other handwritten modules. Regenerate with:
@@ -326,11 +408,12 @@ the gateway dispatch registry.
 ## Run
 
 ```sh
-cd pm-gateway
-python -m pip install -e '.[server,dev]'
-PM_GATEWAY_API_TOKEN='replace-with-a-long-random-secret' \
-  uvicorn pm_gateway.app:app --host 127.0.0.1 --port 8080
+pip install 'pm-gateway[server]'
+PM_GATEWAY_API_TOKEN='replace-with-a-long-random-secret' pm-gateway
 ```
+
+`PM_GATEWAY_HOST` (default `127.0.0.1`) and `PM_GATEWAY_PORT` (default `8080`)
+configure the listener.
 
 The service mounts the draft OpenAPI API at `/pm/v1`. `/healthz` is an
 unauthenticated liveness endpoint; API operations require the gateway bearer token.
@@ -340,6 +423,8 @@ Plane, Jira, and Microsoft Planner adapters are implemented in
 reads, workflow-state reads and transitions; Jira and Planner also expose their
 current board/bucket behavior. Capabilities mark custom fields, milestones,
 comments, attachments, and general field updates unsupported until implemented.
+The `compliant` provider is a passthrough to third-party software that implements
+the standard API directly.
 
 The bearer token protects the optional HTTP service and is distinct from the PM
 vendor credential. HTTP consumers send provider identity, provider credential,
@@ -348,3 +433,21 @@ clients and does not persist credentials. The backend does not use or start this
 HTTP service. To run it as a separate gateway, use
 `docker compose -f docker-compose.pm-gateway.yml up --build` with
 `PM_GATEWAY_API_TOKEN` set, or start it with the command above.
+
+## Development
+
+```sh
+cd pm-gateway
+python -m pip install -e '.[server,dev]'
+python -m pytest
+python -m build
+python -m twine check dist/*
+```
+
+Release steps are documented in
+[RELEASING.md](https://github.com/blackwiz4rd/opennomos/blob/main/pm-gateway/RELEASING.md).
+
+## License
+
+Apache License 2.0. See
+[LICENSE](https://github.com/blackwiz4rd/opennomos/blob/main/pm-gateway/LICENSE).

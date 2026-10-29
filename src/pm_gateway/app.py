@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from pm_gateway._version import __version__
 from pm_gateway.generated.apis.discovery_api import router as discovery_router
 from pm_gateway.generated.apis.work_items_api import router as work_items_router
 from pm_gateway.generated.apis.workflow_api import router as workflow_router
@@ -18,18 +19,24 @@ app = FastAPI(
         "Vendor-neutral API for discovering and exchanging work items across "
         "project-management providers."
     ),
-    version="0.1.0-draft",
+    version=__version__,
 )
 app.include_router(discovery_router, prefix="/pm/v1")
 app.include_router(work_items_router, prefix="/pm/v1")
 app.include_router(workflow_router, prefix="/pm/v1")
 
 
-def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
+def _error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    headers: dict[str, str] | None = None,
+) -> JSONResponse:
     payload = ApiError(code=code, message=message)
     return JSONResponse(
         status_code=status_code,
         content=payload.to_dict(),
+        headers=headers,
     )
 
 
@@ -73,7 +80,8 @@ async def handle_http_exception(request: Request, exc: HTTPException):
         502: "upstream_error",
     }.get(exc.status_code, "internal_error")
     message = exc.detail if isinstance(exc.detail, str) else "The request could not be completed."
-    return _error_response(exc.status_code, code, message)
+    headers = dict(exc.headers) if exc.headers else None
+    return _error_response(exc.status_code, code, message, headers=headers)
 
 
 @app.exception_handler(RequestValidationError)

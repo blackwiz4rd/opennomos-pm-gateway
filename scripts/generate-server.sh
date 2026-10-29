@@ -74,14 +74,21 @@ if [[ "$installed_version" != "$GENERATOR_VERSION" ]]; then
     exit 1
 fi
 
-TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp/opencode}/pm-gateway-openapi.XXXXXX")"
+TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pm-gateway-openapi.XXXXXX")"
 trap 'rm -rf -- "$TEMP_ROOT"' EXIT
+
+PACKAGE_VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "${PACKAGE_DIR}/src/pm_gateway/_version.py")"
+if [[ -z "$PACKAGE_VERSION" ]]; then
+    printf 'Could not read the package version from %s\n' \
+        "${PACKAGE_DIR}/src/pm_gateway/_version.py" >&2
+    exit 1
+fi
 
 "$GENERATOR_CLI" generate \
     -i "$SPEC_PATH" \
     -g python-fastapi \
     -o "$TEMP_ROOT/generated" \
-    --additional-properties="packageName=pm_gateway,fastapiImplementationPackage=impl,packageVersion=0.1.0,serverPort=8080,disallowAdditionalPropertiesIfNotPresent=false" \
+    --additional-properties="packageName=pm_gateway,fastapiImplementationPackage=impl,packageVersion=${PACKAGE_VERSION},serverPort=8080,disallowAdditionalPropertiesIfNotPresent=false" \
     --global-property="apiTests=false,modelTests=false"
 
 generated_package="${TEMP_ROOT}/generated/src/pm_gateway"
@@ -118,6 +125,37 @@ done
 # allowing FastAPI to parse the query string into an integer.
 find "${generated_server_dir}/apis" -type f -name '*.py' -exec \
     sed -i 's/Field(le=200, strict=True, ge=1)/Field(le=200, ge=1)/g' {} +
+
+# OpenAPI Generator's model `from_dict` helpers pass `obj.get(key)` for every
+# schema property into model_validate, which marks absent fields as explicitly
+# set. For merge-patch request models this corrupts RFC 7386 semantics: an
+# omitted field becomes indistinguishable from an explicit null, and a
+# passthrough consumer would clear fields the caller never provided. Validate
+# the raw payload instead; aliases and nested model coercion still apply while
+# absent fields stay unset.
+python3 - "${generated_server_dir}/models/work_item_patch.py" \
+    "${generated_server_dir}/models/transition_request.py" <<'PYEOF'
+import re
+import sys
+
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as handle:
+        text = handle.read()
+    patched, count = re.subn(
+        r"_obj = cls\.model_validate\(\{.*?\n        \}\)",
+        "# Keep only the keys present in the payload: model_validate marks\n"
+        "        # absent fields as unset, preserving RFC 7386 merge-patch\n"
+        "        # semantics for omitted fields versus explicit nulls.\n"
+        "        _obj = cls.model_validate(obj)",
+        text,
+        count=1,
+        flags=re.S,
+    )
+    if count != 1:
+        sys.exit(f"expected exactly one from_dict payload mapping in {path}, found {count}")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(patched)
+PYEOF
 
 if ((CHECK_ONLY)); then
     for current_path in "${OUTPUT_GENERATED_DIR}/apis" "${OUTPUT_GENERATED_DIR}/models" "${OUTPUT_GENERATED_DIR}/security_api.py"; do

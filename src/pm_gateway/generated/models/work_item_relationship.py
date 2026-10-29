@@ -20,7 +20,7 @@ import json
 
 
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from pm_gateway.generated.models.mapping_metadata import MappingMetadata
 from pm_gateway.generated.models.work_item_ref import WorkItemRef
@@ -33,12 +33,19 @@ class WorkItemRelationship(BaseModel):
     """
     WorkItemRelationship
     """ # noqa: E501
-    type: StrictStr = Field(description="Common or provider-defined directed relationship type.", json_schema_extra={"examples": ["blocked_by"]})
+    type: StrictStr = Field(description="Directed relationship from this work item to target. Use a common value where its meaning matches; use other when no safe common mapping exists and preserve the provider value in nativeType.", json_schema_extra={"examples": ["blocked_by"]})
     target: WorkItemRef
-    native_type: Optional[StrictStr] = Field(default=None, alias="nativeType")
+    native_type: Optional[StrictStr] = Field(default=None, description="Provider-native relationship type, especially when type is other.", alias="nativeType")
     mapping: Optional[MappingMetadata] = None
     additional_properties: Dict[str, Any] = {}
     __properties: ClassVar[List[str]] = ["type", "target", "nativeType", "mapping"]
+
+    @field_validator('type')
+    def type_validate_enum(cls, value):
+        """Validates the enum"""
+        if value not in ('parent', 'child', 'blocks', 'blocked_by', 'duplicates', 'duplicated_by', 'relates_to', 'other',):
+            raise ValueError("must be one of enum values ('parent', 'child', 'blocks', 'blocked_by', 'duplicates', 'duplicated_by', 'relates_to', 'other')")
+        return value
 
     model_config = {
         "populate_by_name": True,

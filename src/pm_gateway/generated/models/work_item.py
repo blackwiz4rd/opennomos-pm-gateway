@@ -73,7 +73,7 @@ class WorkItem(BaseModel):
     relationships: Optional[List[WorkItemRelationship]] = None
     custom_fields: Optional[List[CustomFieldValue]] = Field(default=None, alias="customFields")
     source: SourceMetadata
-    extensions: Optional[Dict[str, Any]] = Field(default=None, description="Optional namespaced provider values. Extension keys must be namespaced; clients must ignore unknown keys. Sensitive raw provider payloads should not be placed here by default.")
+    extensions: Optional[Dict[str, Any]] = Field(default=None, description="Optional namespaced provider values. Keys must use a stable namespace controlled by the provider, such as a reverse-DNS name, a URI-like namespace, or a provider-prefixed key such as \"jira:native\"; clients must ignore unknown keys. Sensitive raw provider payloads should not be placed here by default.")
     __properties: ClassVar[List[str]] = ["id", "identifier", "title", "description", "descriptionContentType", "url", "status", "priority", "estimate", "assignees", "creator", "memberships", "lifecycle", "parent", "dates", "labels", "followers", "components", "versions", "iteration", "milestones", "timeTracking", "itemType", "relationships", "customFields", "source", "extensions"]
 
     model_config = {

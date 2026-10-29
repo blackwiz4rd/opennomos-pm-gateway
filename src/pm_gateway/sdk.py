@@ -34,6 +34,7 @@ class Provider(str, Enum):
     PLANE = "plane"
     JIRA = "jira"
     PLANNER = "planner"
+    COMPLIANT = "compliant"
 
 
 class PMGateway:

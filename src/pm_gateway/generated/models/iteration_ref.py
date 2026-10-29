@@ -38,7 +38,7 @@ class IterationRef(BaseModel):
     starts_at: Optional[datetime] = Field(default=None, alias="startsAt")
     ends_at: Optional[datetime] = Field(default=None, alias="endsAt")
     state: Optional[StrictStr] = None
-    extensions: Optional[Dict[str, Any]] = Field(default=None, description="Optional namespaced provider values. Extension keys must be namespaced; clients must ignore unknown keys. Sensitive raw provider payloads should not be placed here by default.")
+    extensions: Optional[Dict[str, Any]] = Field(default=None, description="Optional namespaced provider values. Keys must use a stable namespace controlled by the provider, such as a reverse-DNS name, a URI-like namespace, or a provider-prefixed key such as \"jira:native\"; clients must ignore unknown keys. Sensitive raw provider payloads should not be placed here by default.")
     additional_properties: Dict[str, Any] = {}
     __properties: ClassVar[List[str]] = ["id", "name", "kind", "startsAt", "endsAt", "state", "extensions"]
 

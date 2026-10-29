@@ -83,10 +83,10 @@ class TransitionRequest(BaseModel):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
-        _obj = cls.model_validate({
-            "targetStateId": obj.get("targetStateId"),
-            "targetStateName": obj.get("targetStateName")
-        })
+        # Keep only the keys present in the payload: model_validate marks
+        # absent fields as unset, preserving RFC 7386 merge-patch
+        # semantics for omitted fields versus explicit nulls.
+        _obj = cls.model_validate(obj)
         return _obj
 
 
