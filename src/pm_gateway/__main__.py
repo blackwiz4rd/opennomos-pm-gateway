@@ -9,7 +9,7 @@ def main() -> None:
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on install extras
         raise SystemExit(
             "The pm-gateway HTTP service requires the 'server' extra. "
-            "Install it with: pip install 'pm-gateway[server]'"
+            "Install it with: pip install 'opennomos-pm-gateway[server]'"
         ) from exc
 
     uvicorn.run(

@@ -1,0 +1,1565 @@
+openapi: 3.1.0
+info:
+  title: Project Management Interoperability API
+  version: 0.1.0-draft
+  summary: Draft vendor-neutral HTTP contract for project-management integrations.
+  description: >-
+    A proposed common API for discovering workspaces and containers and reading
+    and updating work items across project-management providers. This is a
+    working draft informed by OpenNomos providers and is not an approved standard.
+servers:
+  - url: https://{host}/pm/v1
+    description: Deployment-defined API base URL.
+    variables:
+      host:
+        default: api.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Discovery
+    description: Discover capabilities, workspaces, and native containers.
+  - name: Work items
+    description: Read and update work items.
+  - name: Workflow
+    description: Read native workflow states and request transitions.
+paths:
+  /capabilities:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: getCapabilities
+      summary: Get supported API profiles and capabilities
+      responses:
+        '200':
+          description: Capabilities available to the current authorization context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ConfiguredWorkspaceSlugs'
+    get:
+      tags: [Discovery]
+      operationId: listWorkspaces
+      summary: List accessible workspaces
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of workspaces.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspacePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: listContainers
+      summary: List containers in a workspace
+      description: >-
+        Containers represent provider-native organizational resources such as
+        projects, boards, plans, lists, repositories, or sheets. The kind is
+        provider-defined; clients must not assume all kinds have identical
+        semantics.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of containers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/boards:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: listBoards
+      summary: List provider-native boards for a container
+      description: >-
+        Optional provider capability. Providers without a board concept return
+        an empty page and advertise boards.list as unsupported.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of boards represented as provider-native containers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/work-items:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Work items]
+      operationId: listWorkItems
+      summary: List work items in a container
+      description: >-
+        Unsupported filters must be reported through capabilities or rejected;
+        implementations must not silently return results that ignore a filter.
+        A cursor is opaque to clients and is only valid for the query context
+        documented by the implementation.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: changedSince
+          in: query
+          description: Return items updated at or after this RFC 3339 timestamp.
+          schema:
+            type: string
+            format: date-time
+        - name: stateId
+          in: query
+          description: Provider-native workflow state ID.
+          schema:
+            type: string
+        - name: assigneeId
+          in: query
+          description: Provider-scoped principal ID.
+          schema:
+            type: string
+        - name: archived
+          in: query
+          description: Filter for archived items; omission means no archive filter.
+          schema:
+            type: boolean
+        - name: deleted
+          in: query
+          description: >-
+            Filter for deleted items when the provider exposes deleted records.
+            A provider that cannot list tombstones must report that capability
+            as unsupported rather than treating deleted=false as a complete sync.
+          schema:
+            type: boolean
+        - name: query
+          in: query
+          description: Optional provider-supported text search.
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: >-
+            Sort expression supported by the implementation. Supported fields
+            must be declared in capabilities; a leading minus indicates
+            descending order.
+          schema:
+            type: string
+            example: '-updatedAt'
+        - name: boardId
+          in: query
+          description: Provider-native board identifier. Optional on providers without board concepts.
+          schema:
+            type: string
+        - name: iterationIds
+          in: query
+          description: Provider-native iteration identifiers, such as Jira sprint IDs.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: A page of work items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItemPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/board-scope:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: getBoardScope
+      summary: Describe the selected board and iteration scope
+      description: Compatibility extension for providers with board/backlog semantics.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - name: boardId
+          in: query
+          schema:
+            type: string
+        - name: iterationIds
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: The effective board scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardScope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/work-items/{workItemId}:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Work items]
+      operationId: getWorkItem
+      summary: Get a work item
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/WorkItemId'
+        - $ref: '#/components/parameters/ContainerContext'
+      responses:
+        '200':
+          description: The work item.
+          headers:
+            ETag:
+              description: Optional opaque revision token for conditional updates.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Work items]
+      operationId: updateWorkItem
+      summary: Update supported work-item fields
+      description: >-
+        This operation is available only when the update capability is
+        advertised. Omitted properties are unchanged. A null value requests
+        clearing a field only when that field is nullable and writable. State
+        changes that require a workflow action use the transitions operation.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/WorkItemId'
+        - $ref: '#/components/parameters/ContainerContext'
+        - name: If-Match
+          in: header
+          required: false
+          description: Opaque revision token returned by GET, when supported.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/WorkItemPatch'
+      responses:
+        '200':
+          description: Updated work item.
+          headers:
+            ETag:
+              description: New opaque revision token, when supported.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '501':
+          $ref: '#/components/responses/NotSupported'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/workflow-states:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Workflow]
+      operationId: listWorkflowStates
+      summary: List native workflow states for a container
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - name: boardId
+          in: query
+          description: Optional provider-native board ID used to scope workflow states.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Native workflow states and optional common categories.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowStatePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/work-items/{workItemId}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    post:
+      tags: [Workflow]
+      operationId: transitionWorkItem
+      summary: Transition a work item to a native workflow state
+      description: >-
+        Optional capability. The provider validates that the requested
+        transition is allowed in the current workflow. A provider may expose
+        available transitions in the workflow-state representation.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/WorkItemId'
+        - $ref: '#/components/parameters/ContainerContext'
+        - name: If-Match
+          in: header
+          required: false
+          description: Opaque revision token, when supported.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+      responses:
+        '200':
+          description: Work item after the transition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '501':
+          $ref: '#/components/responses/NotSupported'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/custom-fields:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: listCustomFieldDefinitions
+      summary: List custom-field definitions for a container
+      description: >-
+        Optional capability. Definitions may be container-, work-item-type-, or
+        workspace-scoped. Implementations should report the effective scope and
+        must use stable field IDs rather than display names as identifiers.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of effective custom-field definitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldDefinitionPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotSupported'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/iterations:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: listIterations
+      summary: List iterations, cycles, or sprints for a container
+      description: >-
+        Optional capability. Return the provider-native kind and dates; do not
+        imply that all iterations have the same planning or workflow semantics.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - name: boardId
+          in: query
+          description: Optional board identifier for providers where iterations are board-scoped.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of iterations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IterationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/containers/{containerId}/milestones:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Discovery]
+      operationId: listMilestones
+      summary: List milestones or releases for a container
+      description: Optional capability; native milestone and release semantics are retained.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContainerId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of milestones.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestonePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotSupported'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/work-items/{workItemId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Work items]
+      operationId: listWorkItemComments
+      summary: List comments or discussion entries on a work item
+      description: Optional capability. Providers may expose comments as stories, updates, notes, or discussions.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/WorkItemId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of comments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotSupported'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workspaces/{workspaceId}/work-items/{workItemId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/Provider'
+      - $ref: '#/components/parameters/ProviderCredential'
+      - $ref: '#/components/parameters/ProviderBaseUrl'
+    get:
+      tags: [Work items]
+      operationId: listWorkItemAttachments
+      summary: List files and links attached to a work item
+      description: Optional capability. File content download is outside this listing operation.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/WorkItemId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of attachment metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotSupported'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    Provider:
+      name: X-PM-Provider
+      in: header
+      required: true
+      description: Adapter key selected by OpenNomos.
+      schema:
+        type: string
+        enum: [plane, jira, planner]
+    ProviderCredential:
+      name: X-PM-Provider-Credential
+      in: header
+      required: true
+      description: >-
+        Provider credential value held by OpenNomos and forwarded for this
+        request only. Plane/Jira use their API token form; Planner uses
+        tenant_id:client_id:client_secret. Gateways and intermediaries must
+        not persist or log this header. TLS is required.
+      schema:
+        type: string
+        format: password
+        minLength: 1
+        writeOnly: true
+    ProviderBaseUrl:
+      name: X-PM-Provider-Base-Url
+      in: header
+      required: false
+      description: >-
+        Optional provider API base URL from the OpenNomos credential record.
+        Jira requires it; Plane and Planner use their documented defaults.
+      schema:
+        type: string
+        format: uri
+    ConfiguredWorkspaceSlugs:
+      name: X-PM-Workspace-Slugs
+      in: header
+      required: false
+      description: >-
+        Comma-separated workspace slugs configured by OpenNomos for this
+        credential. Used only by workspace discovery; the gateway stores none.
+      schema:
+        type: string
+    BoardId:
+      name: boardId
+      in: query
+      required: false
+      description: Optional provider-native board identifier.
+      schema:
+        type: string
+    ContainerContext:
+      name: containerId
+      in: query
+      required: false
+      description: >-
+        Optional native container context required by some providers to retrieve
+        a work item. OpenNomos should provide it when known.
+      schema:
+        type: string
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+    ContainerId:
+      name: containerId
+      in: path
+      required: true
+      schema:
+        type: string
+    WorkItemId:
+      name: workItemId
+      in: path
+      required: true
+      schema:
+        type: string
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque continuation token; omit for the first page.
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+  responses:
+    BadRequest:
+      description: Invalid request or unsupported query parameter.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Authentication is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: The authenticated principal lacks access to this resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Workspace, container, or work item was not found or is inaccessible.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: The requested operation conflicts with current provider state.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    PreconditionFailed:
+      description: The supplied revision token does not match the current resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ValidationError:
+      description: The provider rejected one or more field values or transitions.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    RateLimited:
+      description: Request rate limit exceeded.
+      headers:
+        Retry-After:
+          description: Suggested delay in seconds before retrying.
+          schema:
+            type: integer
+            minimum: 0
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotSupported:
+      description: The selected provider does not support this optional operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InternalError:
+      description: Unexpected server or upstream-provider failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    Capabilities:
+      type: object
+      required: [apiVersion, coreProfile, features]
+      properties:
+        apiVersion:
+          type: string
+          example: 1.0
+        coreProfile:
+          type: string
+          example: core-read-0.1
+        provider:
+          $ref: '#/components/schemas/ProviderRef'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureCapability'
+        limits:
+          type: object
+          additionalProperties: true
+          description: Optional provider-specific limits, such as maximum page size.
+    FeatureCapability:
+      type: object
+      required: [name, supported]
+      properties:
+        name:
+          type: string
+          example: work-items.update
+        supported:
+          type: boolean
+        scope:
+          type: [string, 'null']
+          enum: [connection, workspace, container, work-item-type, work-item, null]
+          description: Scope at which support or configuration can differ.
+        constraints:
+          type: object
+          additionalProperties: true
+    ProviderRef:
+      type: object
+      required: [key]
+      properties:
+        key:
+          type: string
+          example: jira
+        productName:
+          type: [string, 'null']
+        apiVersion:
+          type: [string, 'null']
+    Workspace:
+      type: object
+      required: [id, name, provider]
+      properties:
+        id:
+          type: string
+          description: Opaque ID within this API deployment.
+        name:
+          type: string
+        url:
+          type: [string, 'null']
+          format: uri
+        provider:
+          $ref: '#/components/schemas/ProviderRef'
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    WorkspacePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workspace'
+        nextCursor:
+          type: [string, 'null']
+    Container:
+      type: object
+      required: [id, kind, name]
+      properties:
+        id:
+          type: string
+          description: Opaque provider-scoped identifier.
+        kind:
+          type: string
+          description: Provider-native container type; examples include project, board, plan, and repository.
+        name:
+          type: string
+        url:
+          type: [string, 'null']
+          format: uri
+        parent:
+          oneOf:
+            - $ref: '#/components/schemas/ContainerRef'
+            - type: 'null'
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerRef'
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    BoardScope:
+      type: object
+      required: [boardId, scope, sprints]
+      properties:
+        boardId:
+          type: [string, 'null']
+        scope:
+          type: string
+          enum: [all, backlog, sprint]
+        sprint:
+          oneOf:
+            - $ref: '#/components/schemas/IterationRef'
+            - type: 'null'
+        sprints:
+          type: array
+          items:
+            $ref: '#/components/schemas/IterationRef'
+    ContainerRef:
+      type: object
+      required: [id, kind]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        name:
+          type: [string, 'null']
+    ContainerPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Container'
+        nextCursor:
+          type: [string, 'null']
+    WorkItemPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkItem'
+        nextCursor:
+          type: [string, 'null']
+    WorkItem:
+      type: object
+      required: [id, title, source]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          description: Opaque provider-scoped ID; clients must not parse it.
+        identifier:
+          type: [string, 'null']
+          description: Optional human-facing key or sequence number.
+        title:
+          type: string
+        description:
+          type: [string, 'null']
+        descriptionContentType:
+          type: [string, 'null']
+          description: Content type of the source or canonical description representation.
+        url:
+          type: [string, 'null']
+          format: uri
+        status:
+          oneOf:
+            - $ref: '#/components/schemas/WorkflowStateRef'
+            - type: 'null'
+        priority:
+          oneOf:
+            - $ref: '#/components/schemas/PriorityValue'
+            - type: 'null'
+        estimate:
+          oneOf:
+            - $ref: '#/components/schemas/EstimateValue'
+            - type: 'null'
+        assignees:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrincipalRef'
+        creator:
+          oneOf:
+            - $ref: '#/components/schemas/PrincipalRef'
+            - type: 'null'
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerRef'
+        lifecycle:
+          $ref: '#/components/schemas/WorkItemLifecycle'
+        parent:
+          oneOf:
+            - $ref: '#/components/schemas/WorkItemRef'
+            - type: 'null'
+        dates:
+          $ref: '#/components/schemas/WorkItemDates'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelRef'
+        followers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrincipalRef'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+        versions:
+          type: array
+          description: Provider concepts such as fix versions or releases.
+          items:
+            $ref: '#/components/schemas/NamedRef'
+        iteration:
+          oneOf:
+            - $ref: '#/components/schemas/IterationRef'
+            - type: 'null'
+        milestones:
+          type: array
+          items:
+            $ref: '#/components/schemas/MilestoneRef'
+        timeTracking:
+          oneOf:
+            - $ref: '#/components/schemas/TimeTracking'
+            - type: 'null'
+        itemType:
+          oneOf:
+            - $ref: '#/components/schemas/NamedRef'
+            - type: 'null'
+        relationships:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkItemRelationship'
+        customFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomFieldValue'
+        source:
+          $ref: '#/components/schemas/SourceMetadata'
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    WorkItemPatch:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        description:
+          type: [string, 'null']
+        priority:
+          oneOf:
+            - $ref: '#/components/schemas/PriorityValue'
+            - type: 'null'
+        estimate:
+          oneOf:
+            - $ref: '#/components/schemas/EstimateValue'
+            - type: 'null'
+        assignees:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrincipalRef'
+        dates:
+          $ref: '#/components/schemas/WorkItemDates'
+        itemType:
+          oneOf:
+            - $ref: '#/components/schemas/NamedRef'
+            - type: 'null'
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerRef'
+        parent:
+          oneOf:
+            - $ref: '#/components/schemas/WorkItemRef'
+            - type: 'null'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelRef'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+        lifecycle:
+          $ref: '#/components/schemas/WorkItemLifecycle'
+        followers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrincipalRef'
+        iteration:
+          oneOf:
+            - $ref: '#/components/schemas/IterationRef'
+            - type: 'null'
+        milestones:
+          type: array
+          items:
+            $ref: '#/components/schemas/MilestoneRef'
+        timeTracking:
+          oneOf:
+            - $ref: '#/components/schemas/TimeTracking'
+            - type: 'null'
+        customFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomFieldValue'
+    WorkItemRef:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        identifier:
+          type: [string, 'null']
+        url:
+          type: [string, 'null']
+          format: uri
+    WorkflowStateRef:
+      type: object
+      required: [name, mapping]
+      properties:
+        id:
+          type: [string, 'null']
+        name:
+          type: string
+        category:
+          type: [string, 'null']
+          enum: [backlog, unstarted, started, completed, cancelled, null]
+        mapping:
+          $ref: '#/components/schemas/MappingMetadata'
+    WorkflowState:
+      allOf:
+        - $ref: '#/components/schemas/WorkflowStateRef'
+        - type: object
+          properties:
+            availableTransitions:
+              type: array
+              items:
+                $ref: '#/components/schemas/TransitionRef'
+            extensions:
+              $ref: '#/components/schemas/Extensions'
+    WorkflowStatePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowState'
+    TransitionRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        targetState:
+          oneOf:
+            - $ref: '#/components/schemas/WorkflowStateRef'
+            - type: 'null'
+    TransitionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        targetStateId:
+          type: string
+        targetStateName:
+          type: string
+      oneOf:
+        - required: [targetStateId]
+        - required: [targetStateName]
+    PriorityValue:
+      type: object
+      required: [mapping]
+      properties:
+        level:
+          type: [string, 'null']
+          enum: [highest, high, medium, low, lowest, none, null]
+        nativeValue: {}
+        nativeScale:
+          type: [string, 'null']
+        mapping:
+          $ref: '#/components/schemas/MappingMetadata'
+    EstimateValue:
+      type: object
+      required: [value, unit]
+      properties:
+        value:
+          type: number
+        unit:
+          type: string
+          description: Unit or scale identifier, such as story-points, hours, or provider-defined scale.
+        scale:
+          type: [string, 'null']
+        nativeValue: {}
+        mapping:
+          $ref: '#/components/schemas/MappingMetadata'
+    WorkItemDates:
+      type: object
+      properties:
+        startDate:
+          type: [string, 'null']
+          format: date
+        dueDate:
+          type: [string, 'null']
+          format: date
+        createdAt:
+          type: [string, 'null']
+          format: date-time
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+        completedAt:
+          type: [string, 'null']
+          format: date-time
+    PrincipalRef:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: [string, 'null']
+        url:
+          type: [string, 'null']
+          format: uri
+    LabelRef:
+      type: object
+      required: [name]
+      properties:
+        id:
+          type: [string, 'null']
+        name:
+          type: string
+        color:
+          type: [string, 'null']
+    NamedRef:
+      type: object
+      required: [name]
+      properties:
+        id:
+          type: [string, 'null']
+        name:
+          type: string
+    WorkItemRelationship:
+      type: object
+      required: [type, target]
+      properties:
+        type:
+          type: string
+          description: >-
+            Directed relationship from this work item to target. Use a common
+            value where its meaning matches; use other when no safe common
+            mapping exists and preserve the provider value in nativeType.
+          enum: [parent, child, blocks, blocked_by, duplicates, duplicated_by, relates_to, other]
+          example: blocked_by
+        target:
+          $ref: '#/components/schemas/WorkItemRef'
+        nativeType:
+          type: [string, 'null']
+          description: Provider-native relationship type, especially when type is other.
+        mapping:
+          $ref: '#/components/schemas/MappingMetadata'
+    CustomFieldValue:
+      type: object
+      required: [id, value]
+      properties:
+        id:
+          type: string
+          description: Stable provider-scoped field ID; display names are not identifiers.
+        name:
+          type: [string, 'null']
+        valueType:
+          type: [string, 'null']
+        value: {}
+        mapping:
+          $ref: '#/components/schemas/MappingMetadata'
+    CustomFieldDefinition:
+      type: object
+      required: [id, name, valueType, scope]
+      properties:
+        id:
+          type: string
+          description: Stable provider-scoped identifier.
+        name:
+          type: string
+          description: Display name; it is not an identifier.
+        description:
+          type: [string, 'null']
+        valueType:
+          type: string
+          description: Common or provider-defined value type.
+          enum: [text, number, boolean, date, date-time, single-select, multi-select, user, users, reference, rich-text, json, provider-defined]
+        cardinality:
+          type: string
+          enum: [one, many]
+        required:
+          type: [boolean, 'null']
+        writable:
+          type: [boolean, 'null']
+        scope:
+          type: string
+          enum: [workspace, container, work-item-type, project, board, table, provider-defined]
+        options:
+          type: array
+          items: {}
+        schema:
+          description: Optional JSON Schema for values when the provider exposes one.
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    CustomFieldDefinitionPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomFieldDefinition'
+        nextCursor:
+          type: [string, 'null']
+    WorkItemLifecycle:
+      type: object
+      description: >-
+        Operational state separate from workflow status. Null means the provider
+        cannot report that lifecycle flag; false means it can and the flag is false.
+      properties:
+        archived:
+          type: [boolean, 'null']
+        deleted:
+          type: [boolean, 'null']
+        deletedAt:
+          type: [string, 'null']
+          format: date-time
+    TimeTracking:
+      type: object
+      properties:
+        estimate:
+          oneOf:
+            - $ref: '#/components/schemas/EstimateValue'
+            - type: 'null'
+        spent:
+          oneOf:
+            - $ref: '#/components/schemas/EstimateValue'
+            - type: 'null'
+        remaining:
+          oneOf:
+            - $ref: '#/components/schemas/EstimateValue'
+            - type: 'null'
+        entriesAvailable:
+          type: [boolean, 'null']
+          description: Whether detailed time entries can be listed for this item.
+    IterationRef:
+      type: object
+      required: [id, kind]
+      properties:
+        id:
+          type: string
+        name:
+          type: [string, 'null']
+        kind:
+          type: string
+          description: Native kind such as cycle, sprint, iteration, or timebox.
+        startsAt:
+          type: [string, 'null']
+          format: date-time
+        endsAt:
+          type: [string, 'null']
+          format: date-time
+        state:
+          type: [string, 'null']
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    IterationPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IterationRef'
+        nextCursor:
+          type: [string, 'null']
+    MilestoneRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        dueDate:
+          type: [string, 'null']
+          format: date
+        state:
+          type: [string, 'null']
+        url:
+          type: [string, 'null']
+          format: uri
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    MilestonePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MilestoneRef'
+        nextCursor:
+          type: [string, 'null']
+    Comment:
+      type: object
+      required: [id, body]
+      properties:
+        id:
+          type: string
+        body:
+          type: string
+        contentType:
+          type: [string, 'null']
+        author:
+          oneOf:
+            - $ref: '#/components/schemas/PrincipalRef'
+            - type: 'null'
+        createdAt:
+          type: [string, 'null']
+          format: date-time
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+        parentCommentId:
+          type: [string, 'null']
+        source:
+          $ref: '#/components/schemas/SourceMetadata'
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    CommentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        nextCursor:
+          type: [string, 'null']
+    Attachment:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mediaType:
+          type: [string, 'null']
+        sizeBytes:
+          type: [integer, 'null']
+          minimum: 0
+        url:
+          type: [string, 'null']
+          format: uri
+        createdAt:
+          type: [string, 'null']
+          format: date-time
+        createdBy:
+          oneOf:
+            - $ref: '#/components/schemas/PrincipalRef'
+            - type: 'null'
+        source:
+          $ref: '#/components/schemas/SourceMetadata'
+        extensions:
+          $ref: '#/components/schemas/Extensions'
+    AttachmentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        nextCursor:
+          type: [string, 'null']
+    SourceMetadata:
+      type: object
+      required: [provider, resourceType]
+      properties:
+        provider:
+          type: string
+        resourceType:
+          type: string
+        nativeUrl:
+          type: [string, 'null']
+          format: uri
+        revision:
+          type: [string, 'null']
+    MappingMetadata:
+      type: object
+      required: [quality]
+      properties:
+        quality:
+          type: string
+          enum: [exact, mapped, lossy, inferred, unmapped]
+        note:
+          type: [string, 'null']
+    Extensions:
+      type: object
+      description: >-
+        Optional namespaced provider values. Keys must use a stable namespace
+        controlled by the provider, such as a reverse-DNS name, a URI-like
+        namespace, or a provider-prefixed key such as "jira:native"; clients
+        must ignore unknown keys. Sensitive raw provider payloads should not be
+        placed here by default.
+      additionalProperties: true
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - unauthenticated
+            - forbidden
+            - not_found
+            - conflict
+            - precondition_failed
+            - validation_error
+            - rate_limited
+            - not_supported
+            - upstream_error
+            - internal_error
+        message:
+          type: string
+        requestId:
+          type: [string, 'null']
+        retryable:
+          type: boolean
+        retryAfterSeconds:
+          type: [integer, 'null']
+          minimum: 0
+        invalidParams:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvalidParam'
+        providerCode:
+          type: [string, 'null']
+          description: Optional provider error code for diagnostics.
+    InvalidParam:
+      type: object
+      required: [name, reason]
+      properties:
+        name:
+          type: string
+        reason:
+          type: string

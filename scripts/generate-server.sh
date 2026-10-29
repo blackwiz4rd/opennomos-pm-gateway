@@ -3,9 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="$(cd -- "${PACKAGE_DIR}/.." && pwd)"
 
-SPEC_PATH="${REPO_ROOT}/docs/reference/pm-api-openapi-v0.1.yaml"
+SPEC_PATH="${PACKAGE_DIR}/spec/pm-api-openapi-v0.1.yaml"
 OUTPUT_GENERATED_DIR="${PACKAGE_DIR}/src/pm_gateway/generated"
 GENERATOR_CLI="${OPENAPI_GENERATOR_CLI:-openapi-generator-cli}"
 GENERATOR_VERSION="${OPENAPI_GENERATOR_VERSION:-7.24.0}"

@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to `pm-gateway` are documented here. The package follows
-[Semantic Versioning](https://semver.org/); the HTTP contract is versioned
-separately in the OpenAPI document.
+All notable changes to `opennomos-pm-gateway` are documented here. The package
+follows [Semantic Versioning](https://semver.org/); the HTTP contract is
+versioned separately in the OpenAPI document.
 
 ## [0.1.0a1] - 2026-10-29
 

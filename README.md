@@ -4,7 +4,8 @@ Standalone, provider-neutral project-management interoperability SDK and
 optional HTTP gateway. The Python package provides an in-process SDK and an HTTP
 service for the draft PM interoperability API. It does not import OpenNomos
 backend code or share its database, and is designed to be usable independently
-of OpenNomos.
+of OpenNomos. The package lives in its own repository,
+[`opennomos-pm-gateway`](https://github.com/blackwiz4rd/opennomos-pm-gateway).
 
 > **Status:** `0.1.0a1` alpha technical preview. The Python API and the draft
 > contract may change before 1.0. Microsoft Planner has not been validated
@@ -16,10 +17,10 @@ Requires Python 3.11 or newer.
 
 ```sh
 # SDK only
-pip install pm-gateway
+pip install opennomos-pm-gateway
 
 # SDK plus the optional HTTP service
-pip install 'pm-gateway[server]'
+pip install 'opennomos-pm-gateway[server]'
 ```
 
 OpenNomos is one possible consumer, not the boundary of the gateway's product
@@ -41,7 +42,7 @@ The gateway is built in the following order of priority:
 Establish and stabilize a provider-neutral vocabulary (workspaces, containers, work items,
 workflow states, iterations, milestones, custom fields, comments, attachments, …) and a
 single OpenAPI contract
-([`pm-api-openapi-v0.1.yaml`](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-api-openapi-v0.1.yaml))
+([`pm-api-openapi-v0.1.yaml`](https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/spec/pm-api-openapi-v0.1.yaml))
 that every adapter implements. This is the foundation; adapter and SDK work depend on it.
 Generated server code and Pydantic models derive from this spec.
 
@@ -208,7 +209,7 @@ for the product-by-product crosswalk and mapping constraints.
 Install the package from PyPI:
 
 ```sh
-pip install pm-gateway
+pip install opennomos-pm-gateway
 ```
 
 For development inside the OpenNomos monorepo, use the editable install in
@@ -382,17 +383,20 @@ The same behavior is available over HTTP: send `X-PM-Provider: compliant`,
 ## Generated server code
 
 The OpenAPI document at
-[`docs/reference/pm-api-openapi-v0.1.yaml`](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-api-openapi-v0.1.yaml)
+[`spec/pm-api-openapi-v0.1.yaml`](https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/spec/pm-api-openapi-v0.1.yaml)
 is the contract source. Generated API routes and models are grouped under
 `src/pm_gateway/generated/` (APIs, models, and `security_api.py`). **Do not edit
 those generated files by hand.** Implementations belong under
 `src/pm_gateway/impl/` and other handwritten modules. Regenerate with:
 
 ```sh
-./pm-gateway/scripts/generate-server.sh
+./scripts/generate-server.sh
 # Verify generated files without changing the package:
-./pm-gateway/scripts/generate-server.sh --check
+./scripts/generate-server.sh --check
 ```
+
+Run these commands from the package root. In the OpenNomos monorepo, prefix them
+with `pm-gateway/`.
 
 The script requires OpenAPI Generator CLI `7.24.0` and Java. Override the
 specification or generated output directory with `--spec` and `--package-dir`,
@@ -408,7 +412,7 @@ the gateway dispatch registry.
 ## Run
 
 ```sh
-pip install 'pm-gateway[server]'
+pip install 'opennomos-pm-gateway[server]'
 PM_GATEWAY_API_TOKEN='replace-with-a-long-random-secret' pm-gateway
 ```
 
@@ -429,25 +433,33 @@ the standard API directly.
 The bearer token protects the optional HTTP service and is distinct from the PM
 vendor credential. HTTP consumers send provider identity, provider credential,
 and optional provider base URL per request. The service uses request-scoped
-clients and does not persist credentials. The backend does not use or start this
-HTTP service. To run it as a separate gateway, use
-`docker compose -f docker-compose.pm-gateway.yml up --build` with
-`PM_GATEWAY_API_TOKEN` set, or start it with the command above.
+clients and does not persist credentials. The OpenNomos backend does not use or
+start this HTTP service. To run it as a container:
+
+```sh
+docker build -t opennomos-pm-gateway .
+docker run --rm -p 8080:8080 \
+  -e PM_GATEWAY_API_TOKEN='replace-with-a-long-random-secret' \
+  opennomos-pm-gateway
+```
 
 ## Development
 
+From the repository root:
+
 ```sh
-cd pm-gateway
 python -m pip install -e '.[server,dev]'
 python -m pytest
 python -m build
 python -m twine check dist/*
 ```
 
+When working from the OpenNomos monorepo, run these from `pm-gateway/`.
+
 Release steps are documented in
-[RELEASING.md](https://github.com/blackwiz4rd/opennomos/blob/main/pm-gateway/RELEASING.md).
+[RELEASING.md](https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/RELEASING.md).
 
 ## License
 
 Apache License 2.0. See
-[LICENSE](https://github.com/blackwiz4rd/opennomos/blob/main/pm-gateway/LICENSE).
+[LICENSE](https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/LICENSE).

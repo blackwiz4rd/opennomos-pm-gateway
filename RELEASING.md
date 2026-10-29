@@ -1,37 +1,60 @@
-# Releasing `pm-gateway`
+# Releasing `opennomos-pm-gateway`
 
-This repository prepares, but does not publish, the `pm-gateway` distribution.
-Follow this checklist when the project is ready to release.
+This directory is self-contained. It can be split into the standalone repository
+`https://github.com/blackwiz4rd/opennomos-pm-gateway` and released to PyPI from
+there. Nothing in this document publishes anything by itself.
+
+## 0. Split into the standalone repository
+
+Create an empty repository at
+`https://github.com/blackwiz4rd/opennomos-pm-gateway` (no README, no license).
+Commit the package, then run the split from the OpenNomos repository root:
+
+```sh
+git subtree split --prefix=pm-gateway -b opennomos-pm-gateway
+git remote add pm-gateway git@github.com:blackwiz4rd/opennomos-pm-gateway.git
+git push pm-gateway opennomos-pm-gateway:main
+```
+
+Notes:
+
+- `git subtree split` rewrites the `pm-gateway/` history so the directory
+  contents become the repository root.
+- `.github/workflows/ci.yml` is inert inside the monorepo but becomes the CI
+  workflow in the standalone repository.
+- `OSLC.md` and `STANDARDIZATION_ROADMAP.md` are gitignored working drafts and
+  are not copied by the split. Move them into a tracked `docs/` directory or
+  force-add them first if they should ship.
+- The canonical OpenAPI contract is `spec/pm-api-openapi-v0.1.yaml`. The
+  monorepo keeps a mirror at `docs/reference/` for its documentation site;
+  `tests/test_spec_mirror.py` keeps the two identical while both exist.
+- After the split, the monorepo can either remove `pm-gateway/` and depend on
+  the published package, or add the new repository as a submodule at
+  `pm-gateway/`.
 
 ## 1. Prerequisites
 
 ### Public project home
 
 PyPI renders the README and `[project.urls]` for people who have no repository
-access. Before publishing:
-
-- make the repository public, or create a dedicated public repository for the
-  package and update the URLs in `pyproject.toml` and `README.md`;
-- confirm every absolute link in `README.md` resolves without authentication;
-- confirm `LICENSE`, `CHANGELOG.md`, and the OpenAPI document are reachable.
-
-If the repository or documentation site is private, PyPI visitors will see dead
-links. Make the repository public, or point `[project.urls]` and the README at a
-public mirror, before the first release.
+access. Confirm that the repository and every absolute link in `README.md` are
+publicly reachable before the first release. If the repository is private, make
+it public or point the URLs at a public mirror.
 
 ### PyPI trusted publishing
 
 1. Create or verify the PyPI account and enable two-factor authentication.
 2. Add a pending publisher:
-   - Project: `pm-gateway`
+   - Project: `opennomos-pm-gateway`
    - Owner/repository: the public repository
-   - Workflow: `pm-gateway.yml`
+   - Workflow: `ci.yml`
    - Environment: `pypi`
 3. Add the same pending publisher on TestPyPI with environment `testpypi`.
 4. In GitHub, create environments `pypi` and `testpypi`; consider requiring a
    reviewer for `pypi`.
 
-No `PYPI_API_TOKEN` secret is required; the workflow uses OIDC trusted publishing.
+No `PYPI_API_TOKEN` secret is required; the workflow uses OIDC trusted
+publishing.
 
 ## 2. Version and changelog
 
@@ -39,17 +62,21 @@ No `PYPI_API_TOKEN` secret is required; the workflow uses OIDC trusted publishin
 2. Add a matching entry to `CHANGELOG.md`.
 3. Confirm the version is valid PEP 440 (`0.1.0a1` for a pre-release, `0.1.0` for
    a final release).
-4. If the contract changed, update
-   `../docs/reference/pm-api-openapi-v0.1.yaml` and regenerate:
+4. If the contract changed, edit `spec/pm-api-openapi-v0.1.yaml` and regenerate:
 
    ```sh
-   OPENAPI_GENERATOR_VERSION=7.24.0 ./scripts/generate-server.sh
+   ./scripts/generate-server.sh
    ```
+
+5. If the OpenNomos docs mirror still exists, copy the spec to
+   `docs/reference/pm-api-openapi-v0.1.yaml` and run `python -m pytest` (the
+   mirror test fails on drift).
 
 ## 3. Local verification
 
+From the repository root:
+
 ```sh
-cd pm-gateway
 python -m pip install -e '.[server,dev]'
 python -m pytest
 ./scripts/generate-server.sh --check
@@ -60,10 +87,10 @@ python -m twine check dist/*
 Then, in a clean virtual environment:
 
 ```sh
-python -m venv /tmp/pm-gateway-smoke
-/tmp/pm-gateway-smoke/bin/pip install \
-  'pm-gateway[server] @ file:///absolute/path/to/dist/pm_gateway-X.Y.Z-py3-none-any.whl'
-PM_GATEWAY_API_TOKEN=test /tmp/pm-gateway-smoke/bin/pm-gateway &
+python -m venv /tmp/opennomos-pm-gateway-smoke
+/tmp/opennomos-pm-gateway-smoke/bin/pip install \
+  'opennomos-pm-gateway[server] @ file:///absolute/path/to/dist/opennomos_pm_gateway-X.Y.Z-py3-none-any.whl'
+PM_GATEWAY_API_TOKEN=test /tmp/opennomos-pm-gateway-smoke/bin/pm-gateway &
 curl http://127.0.0.1:8080/healthz
 ```
 
@@ -76,24 +103,24 @@ prints the "install the server extra" message instead of a traceback.
 python -m twine upload --repository testpypi dist/*
 ```
 
-Or run the **pm-gateway** workflow manually (`workflow_dispatch`); it builds and
-uploads to TestPyPI through trusted publishing.
+Or run the **ci** workflow manually (`workflow_dispatch`); it builds and uploads
+to TestPyPI through trusted publishing.
 
 Install from TestPyPI with the real PyPI index as a dependency fallback:
 
 ```sh
 pip install --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple \
-  'pm-gateway[server]==X.Y.Z'
+  'opennomos-pm-gateway[server]==X.Y.Z'
 ```
 
 ## 5. Publish
 
-1. Tag the release with the package-prefixed tag:
+1. Tag the release:
 
    ```sh
-   git tag pm-gateway-v0.1.0a1
-   git push origin pm-gateway-v0.1.0a1
+   git tag v0.1.0a1
+   git push origin v0.1.0a1
    ```
 
 2. The `publish` job builds, checks metadata, and uploads to PyPI.
@@ -104,13 +131,13 @@ to overwrite it.
 
 ## 6. After the first publish: stop vendoring
 
-The repository's root `pyproject.toml` currently includes `pm-gateway/src` in the
-`opennomos` distribution. Once `pm-gateway` is on PyPI:
+If the monorepo still vendors the package, update its root `pyproject.toml`:
 
 1. Remove `"pm-gateway/src"` from `[tool.setuptools.packages.find].where` and
    `pm_gateway*` from `include`.
-2. Add `"pm-gateway>=0.1.0a1,<0.2"` to the root dependencies.
-3. Use `pip install -e ./pm-gateway` for local development.
+2. Add `"opennomos-pm-gateway>=0.1.0a1,<0.2"` to the root dependencies.
+3. Use `pip install -e ./pm-gateway` for local development, or replace
+   `pm-gateway/` with a git submodule of the standalone repository.
 4. Run the backend test suite to confirm the SDK still resolves.
 
 This prevents two distributions from owning the same `pm_gateway` files.

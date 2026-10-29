@@ -3,7 +3,7 @@ requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pm-gateway"
+name = "opennomos-pm-gateway"
 dynamic = ["version"]
 description = "Vendor-neutral project-management interoperability SDK and optional HTTP gateway"
 readme = "README.md"
@@ -60,10 +60,10 @@ dev = [
 pm-gateway = "pm_gateway.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/blackwiz4rd/opennomos/tree/main/pm-gateway"
-Documentation = "https://github.com/blackwiz4rd/opennomos/blob/main/pm-gateway/README.md"
-Source = "https://github.com/blackwiz4rd/opennomos"
-Issues = "https://github.com/blackwiz4rd/opennomos/issues"
+Homepage = "https://github.com/blackwiz4rd/opennomos-pm-gateway"
+Documentation = "https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/README.md"
+Source = "https://github.com/blackwiz4rd/opennomos-pm-gateway"
+Issues = "https://github.com/blackwiz4rd/opennomos-pm-gateway/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

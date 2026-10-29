@@ -11,8 +11,8 @@ from pm_gateway.generated.apis.work_items_api_base import BaseWorkItemsApi
 from pm_gateway.generated.apis.workflow_api_base import BaseWorkflowApi
 from pm_gateway.impl.provider_api import _OPERATION_BASES, _UNSUPPORTED_OPERATIONS
 
-ROOT = Path(__file__).resolve().parents[2]
-SPEC_PATH = ROOT / "docs" / "reference" / "pm-api-openapi-v0.1.yaml"
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+SPEC_PATH = PACKAGE_ROOT / "spec" / "pm-api-openapi-v0.1.yaml"
 
 
 def _operation_id_to_method(operation_id: str) -> str:
