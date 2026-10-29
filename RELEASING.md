@@ -1,43 +1,38 @@
 # Releasing `opennomos-pm-gateway`
 
-This directory is self-contained. It can be split into the standalone repository
-`https://github.com/blackwiz4rd/opennomos-pm-gateway` and released to PyPI from
-there. Nothing in this document publishes anything by itself.
+This repository is the standalone source of truth for `opennomos-pm-gateway`.
+The OpenNomos monorepo tracks it as a git submodule at `pm-gateway/`; commit and
+push package changes here, then bump the submodule pointer in the monorepo.
+Nothing in this document publishes anything by itself.
 
-## 0. Split into the standalone repository
+## 0. Repository layout
 
-Create an empty repository at
-`https://github.com/blackwiz4rd/opennomos-pm-gateway` (no README, no license).
-Commit the package, then run the split from the OpenNomos repository root:
+The package lives at the root of this repository and is released to PyPI from
+here. The monorepo consumes it in one of two ways:
+
+- current: the root `opennomos` package still includes `pm-gateway/src` in its
+  package discovery, while `pm-gateway/` is a submodule;
+- target: the monorepo depends on the published `opennomos-pm-gateway` package
+  and stops vendoring `pm_gateway` (see section 6).
+
+Do not copy package files back into the monorepo. The submodule pointer is
+updated from the monorepo with:
 
 ```sh
-git subtree split --prefix=pm-gateway -b opennomos-pm-gateway
-git remote add pm-gateway git@github.com:blackwiz4rd/opennomos-pm-gateway.git
-git push pm-gateway opennomos-pm-gateway:main
+git -C pm-gateway fetch origin
+git -C pm-gateway checkout main
+git -C pm-gateway pull
+git add pm-gateway
+git commit -m "chore: bump pm-gateway"
 ```
 
-Notes:
+The canonical OpenAPI contract is `spec/pm-api-openapi-v0.1.yaml`. The monorepo
+keeps a mirror at `docs/reference/` for its documentation site;
+`tests/test_spec_mirror.py` keeps the two identical while both exist.
 
-- `git subtree split` rewrites the `pm-gateway/` history so the directory
-  contents become the repository root. Tags are not copied by the split; create
-  and push `v*` tags in the standalone repository.
-- `.github/workflows/ci.yml` is inert inside the monorepo but becomes the CI
-  workflow in the standalone repository.
-- The `-b opennomos-pm-gateway` form above is only for the initial split and
-  fails once the local branch exists. For subsequent syncs, use:
-
-  ```sh
-  git subtree push --prefix=pm-gateway pm-gateway main
-  ```
-- `OSLC.md` and `STANDARDIZATION_ROADMAP.md` are gitignored working drafts and
-  are not copied by the split. Move them into a tracked `docs/` directory or
-  force-add them first if they should ship.
-- The canonical OpenAPI contract is `spec/pm-api-openapi-v0.1.yaml`. The
-  monorepo keeps a mirror at `docs/reference/` for its documentation site;
-  `tests/test_spec_mirror.py` keeps the two identical while both exist.
-- After the split, the monorepo can either remove `pm-gateway/` and depend on
-  the published package, or add the new repository as a submodule at
-  `pm-gateway/`.
+`OSLC.md` and `STANDARDIZATION_ROADMAP.md` are gitignored working drafts and are
+not part of the package. Move them into a tracked `docs/` directory or
+force-add them first if they should ship.
 
 ## 1. Prerequisites
 
