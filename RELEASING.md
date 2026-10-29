@@ -23,6 +23,12 @@ Notes:
   and push `v*` tags in the standalone repository.
 - `.github/workflows/ci.yml` is inert inside the monorepo but becomes the CI
   workflow in the standalone repository.
+- The `-b opennomos-pm-gateway` form above is only for the initial split and
+  fails once the local branch exists. For subsequent syncs, use:
+
+  ```sh
+  git subtree push --prefix=pm-gateway pm-gateway main
+  ```
 - `OSLC.md` and `STANDARDIZATION_ROADMAP.md` are gitignored working drafts and
   are not copied by the split. Move them into a tracked `docs/` directory or
   force-add them first if they should ship.
@@ -143,10 +149,10 @@ prints the "install the server extra" message instead of a traceback.
 python -m twine upload --repository testpypi dist/*
 ```
 
-The **ci** workflow also builds and uploads every push to `main` to TestPyPI
-through trusted publishing. You can run it manually (`workflow_dispatch`) as
-well. Re-running the same commit is safe because the publish action is configured
-with `skip-existing: true`.
+TestPyPI publishing is disabled in CI for now; the `publish-testpypi` job in
+`.github/workflows/ci.yml` is commented out until its trusted publisher is
+configured. Use the manual `twine upload` command above if you need a TestPyPI
+dry run.
 
 Install from TestPyPI with the real PyPI index as a dependency fallback:
 

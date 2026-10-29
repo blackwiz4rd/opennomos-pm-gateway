@@ -9,8 +9,8 @@ versioned separately in the OpenAPI document.
 ### Changed
 
 - Package versions are derived from git tags with `setuptools-scm`.
-- Main-branch builds publish development versions to TestPyPI automatically;
-  tagged `v*` releases publish the exact tag version to PyPI.
+- Tagged `v*` releases publish the exact tag version to PyPI. TestPyPI
+  publishing is disabled in CI for now.
 
 ## [0.1.0a1] - 2026-10-29
 
