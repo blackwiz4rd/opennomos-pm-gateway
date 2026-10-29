@@ -1,9 +1,7 @@
 import asyncio
 import logging
 from functools import partial
-from typing import Any
 
-import httpx
 from plane import PlaneClient
 from plane.models.query_params import WorkItemQueryParams
 from plane.models.work_items import UpdateWorkItem
@@ -15,6 +13,7 @@ from pm_gateway.adapters.normalization import (
     normalize_priority_value,
     normalize_state_category,
 )
+from pm_gateway.security import provider_timeout_seconds
 
 logger = logging.getLogger("pm_gateway.adapters.plane")
 
@@ -26,7 +25,6 @@ class PlaneProvider:
         self._credential = credential
         self._base_url = (base_url or "https://api.plane.so").rstrip("/")
         self._clients: dict[str, PlaneClient] = {}
-        self._http: httpx.AsyncClient | None = None
         self._lock = asyncio.Lock()
 
     async def invalidate(self) -> None:
@@ -39,15 +37,9 @@ class PlaneProvider:
             if close is not None:
                 try:
                     await asyncio.to_thread(close)
-                except Exception:  # pragma: no cover - best-effort cleanup
-                    pass
+                except Exception as exc:  # pragma: no cover - best-effort cleanup
+                    logger.debug("Could not close Plane client: %s", type(exc).__name__)
         self._clients.clear()
-        if self._http is not None:
-            try:
-                await self._http.aclose()
-            except Exception:  # pragma: no cover - best effort
-                pass
-            self._http = None
 
     async def _ensure(self, workspace_slug: str) -> PlaneClient:
         if workspace_slug in self._clients:
@@ -66,23 +58,9 @@ class PlaneProvider:
                 base_url=self._base_url,
                 api_key=self._credential,
             )
+            client.config.timeout = provider_timeout_seconds()
             self._clients[workspace_slug] = client
             return client
-
-    async def _http_get(self, path: str, workspace_slug: str = "") -> Any:
-        if not workspace_slug:
-            raise RuntimeError("workspace_slug required for Plane HTTP calls")
-
-        client = await self._ensure(workspace_slug)
-        if self._http is None:
-            self._http = httpx.AsyncClient(base_url=client.base_url)
-        headers = {
-            "X-Api-Key": client.api_key,
-            "Content-Type": "application/json",
-        }
-        response = await self._http.get(path, headers=headers)
-        response.raise_for_status()
-        return response.json()
 
     def _normalize_work_item(self, raw: dict, project_id: str = "") -> dict:
         """Convert a Plane work item to the normalized model."""
@@ -149,11 +127,22 @@ class PlaneProvider:
         if sequence_id is not None:
             identifier = str(sequence_id)
 
+        if raw.get("description_stripped") is not None:
+            description = raw.get("description_stripped")
+            description_content_type = "text/plain"
+        elif raw.get("description_html") is not None:
+            description = raw.get("description_html")
+            description_content_type = "text/html"
+        else:
+            description = None
+            description_content_type = None
+
         return NormalizedWorkItem(
             id=raw.get("id", ""),
             identifier=identifier,
             title=raw.get("name", ""),
-            description=raw.get("description_stripped") or raw.get("description_html"),
+            description=description,
+            description_content_type=description_content_type,
             state=state_name,
             state_id=state_id,
             state_category=state_category,

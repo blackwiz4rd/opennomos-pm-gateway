@@ -27,9 +27,8 @@ from pm_gateway.adapters.models import NormalizedWorkItem
 from pm_gateway.adapters.normalization import (
     format_date,
     format_datetime,
-    normalize_priority_value,
-    normalize_state_category,
 )
+from pm_gateway.security import provider_timeout_seconds, validate_provider_base_url
 
 logger = logging.getLogger("pm_gateway.adapters.planner")
 
@@ -76,6 +75,8 @@ class PlannerProvider:
 
     def __init__(self, credential: str, base_url: str | None = None) -> None:
         self._credential = credential
+        if base_url is not None:
+            validate_provider_base_url("planner", base_url)
         self._base_url = (base_url or _GRAPH_BASE_URL).strip().rstrip("/")
         self._credential_parts = self._parse_api_key(credential)
         self._clients: dict[str, httpx.AsyncClient] = {}
@@ -177,7 +178,8 @@ class PlannerProvider:
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
                 },
-                timeout=30.0,
+                timeout=provider_timeout_seconds(),
+                follow_redirects=False,
             )
             self._clients[workspace_slug] = client
             return client
@@ -380,8 +382,8 @@ class PlannerProvider:
             )
             for b in bucket_data.get("value", []):
                 bucket_names[b.get("id", "")] = b.get("name", "")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not fetch buckets for plan %s: %s", project_id, type(exc).__name__)
 
         return self._task_to_dict(data, bucket_names.get(data.get("bucketId")))
 
@@ -462,8 +464,8 @@ class PlannerProvider:
             )
             for b in bucket_data.get("value", []):
                 bucket_names[b.get("id", "")] = b.get("name", "")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not fetch buckets for plan %s: %s", project_id, type(exc).__name__)
 
         return self._task_to_dict(updated, bucket_names.get(updated.get("bucketId")))
 

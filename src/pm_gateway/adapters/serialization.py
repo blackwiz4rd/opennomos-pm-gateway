@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from pm_gateway.adapters.normalization import build_work_item_url, normalize_state_category
+from pm_gateway.security import safe_url
 from pm_gateway.generated.models.container import Container
 from pm_gateway.generated.models.container_ref import ContainerRef
 from pm_gateway.generated.models.estimate_value import EstimateValue
@@ -57,7 +58,7 @@ def _description(value: Any) -> tuple[str | None, str | None]:
                     collect(child)
 
         collect(value)
-        return "\n".join(chunks), "application/vnd.atlassian.adf+json"
+        return "\n".join(chunks), "text/plain"
     return str(value), "text/plain"
 
 
@@ -223,14 +224,15 @@ def as_work_item(
     if extra:
         extensions[f"{provider}:native"] = extra
 
-    description, description_content_type = _description(raw.get("description"))
+    description, inferred_content_type = _description(raw.get("description"))
+    description_content_type = raw.get("description_content_type") or inferred_content_type
     return WorkItem(
         id=identifier,
         identifier=str(raw["identifier"]) if raw.get("identifier") is not None else None,
         title=str(raw.get("title") or ""),
         description=description,
         description_content_type=description_content_type,
-        url=raw.get("url") or native_url,
+        url=safe_url(raw.get("url")) or native_url,
         status=status,
         priority=priority,
         estimate=estimate,

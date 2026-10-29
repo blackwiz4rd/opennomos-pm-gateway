@@ -144,3 +144,27 @@ async def test_unsupported_provider_feature_returns_contract_error(
 
     assert response.status_code == 501
     assert response.json()["code"] == "not_supported"
+
+
+@pytest.mark.asyncio
+async def test_oversized_request_body_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PM_GATEWAY_MAX_BODY_BYTES", "10")
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/healthz", content=b"x" * 100)
+
+    assert response.status_code == 413
+    assert response.json()["code"] == "invalid_request"
+
+
+@pytest.mark.asyncio
+async def test_responses_include_baseline_security_headers() -> None:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/healthz")
+
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["referrer-policy"] == "no-referrer"

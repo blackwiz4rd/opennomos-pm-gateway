@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hmac
 import os
 
 from fastapi import FastAPI, HTTPException, Request
@@ -12,6 +11,7 @@ from pm_gateway.generated.apis.discovery_api import router as discovery_router
 from pm_gateway.generated.apis.work_items_api import router as work_items_router
 from pm_gateway.generated.apis.workflow_api import router as workflow_router
 from pm_gateway.generated.models.api_error import ApiError
+from pm_gateway.security import token_matches
 
 app = FastAPI(
     title="Project Management Interoperability API",
@@ -26,6 +26,15 @@ app.include_router(work_items_router, prefix="/pm/v1")
 app.include_router(workflow_router, prefix="/pm/v1")
 
 
+def _max_body_bytes() -> int:
+    raw = os.getenv("PM_GATEWAY_MAX_BODY_BYTES", str(1024 * 1024))
+    try:
+        value = int(raw)
+    except ValueError:
+        return 1024 * 1024
+    return value if value > 0 else 1024 * 1024
+
+
 def _error_response(
     status_code: int,
     code: str,
@@ -38,6 +47,30 @@ def _error_response(
         content=payload.to_dict(),
         headers=headers,
     )
+
+
+@app.middleware("http")
+async def enforce_request_size(request: Request, call_next):
+    raw_length = request.headers.get("content-length")
+    if raw_length is not None:
+        try:
+            length = int(raw_length)
+        except ValueError:
+            return _error_response(400, "invalid_request", "Invalid Content-Length header.")
+        if length < 0:
+            return _error_response(400, "invalid_request", "Invalid Content-Length header.")
+        if length > _max_body_bytes():
+            return _error_response(413, "invalid_request", "Request body is too large.")
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Cache-Control", "no-store")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
 
 
 @app.middleware("http")
@@ -58,7 +91,7 @@ async def authenticate_gateway_client(request: Request, call_next):
     if (
         not separator
         or scheme.lower() != "bearer"
-        or not hmac.compare_digest(supplied_token, configured_token)
+        or not token_matches(supplied_token, configured_token)
     ):
         return _error_response(401, "unauthenticated", "A valid gateway bearer token is required.")
 

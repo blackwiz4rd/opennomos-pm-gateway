@@ -100,7 +100,11 @@ async def test_compliant_request_uses_bearer_auth_and_drops_empty_query_values()
 
 
 @pytest.mark.asyncio
-async def test_compliant_request_propagates_upstream_errors() -> None:
+async def test_compliant_request_propagates_upstream_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS", "1")
+
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(404, json={"message": "workspace not found"})
 
@@ -114,7 +118,7 @@ async def test_compliant_request_propagates_upstream_errors() -> None:
         await adapter.request("GET", "/workspaces/missing")
 
     assert error.value.status_code == 404
-    assert error.value.detail == "workspace not found"
+    assert error.value.detail == "The PM provider returned HTTP 404: workspace not found"
 
 
 @pytest.mark.asyncio
@@ -425,7 +429,11 @@ async def test_compliant_paths_percent_encode_ids() -> None:
 
 
 @pytest.mark.asyncio
-async def test_compliant_upstream_rate_limit_forwards_retry_after() -> None:
+async def test_compliant_upstream_rate_limit_forwards_retry_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS", "1")
+
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             429,
@@ -443,7 +451,7 @@ async def test_compliant_upstream_rate_limit_forwards_retry_after() -> None:
         await adapter.request("GET", "/workspaces")
 
     assert error.value.status_code == 429
-    assert error.value.detail == "slow down"
+    assert error.value.detail == "The PM provider returned HTTP 429: slow down"
     assert error.value.headers == {"Retry-After": "30"}
 
 
@@ -485,7 +493,11 @@ async def test_http_compliant_rate_limit_forwards_retry_after(
 
 
 @pytest.mark.asyncio
-async def test_compliant_upstream_error_body_without_message_object() -> None:
+async def test_compliant_upstream_error_body_without_message_object(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS", "1")
+
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(502, json=["boom"])
 
@@ -500,3 +512,26 @@ async def test_compliant_upstream_error_body_without_message_object() -> None:
 
     assert error.value.status_code == 502
     assert "boom" in error.value.detail
+
+
+@pytest.mark.asyncio
+async def test_compliant_upstream_error_body_is_hidden_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS", raising=False)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"message": "internal-only-detail"})
+
+    adapter = CompliantProvider(
+        "secret",
+        "https://remote.example",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        await adapter.request("GET", "/workspaces")
+
+    assert error.value.status_code == 400
+    assert error.value.detail == "The PM provider returned HTTP 400."
+    assert "internal-only-detail" not in error.value.detail

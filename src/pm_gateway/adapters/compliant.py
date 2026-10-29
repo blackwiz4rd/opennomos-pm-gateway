@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import httpx
 from fastapi import HTTPException
+
+from pm_gateway.security import (
+    expose_upstream_errors,
+    provider_timeout_seconds,
+    validate_provider_base_url,
+)
+
+logger = logging.getLogger("pm_gateway.adapters.compliant")
 
 
 def _normalize_base_url(base_url: str) -> str:
@@ -13,6 +22,24 @@ def _normalize_base_url(base_url: str) -> str:
     if value and not value.lower().endswith("/pm/v1"):
         value = f"{value}/pm/v1"
     return value
+
+
+def _error_detail(response: httpx.Response) -> str:
+    """Return a bounded, controller-safe upstream error message."""
+    if not expose_upstream_errors():
+        return f"The PM provider returned HTTP {response.status_code}."
+
+    detail = ""
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+    if isinstance(payload, dict):
+        detail = str(payload.get("message") or payload.get("detail") or "")
+    if not detail:
+        detail = response.text
+    detail = " ".join(detail.split())
+    return f"The PM provider returned HTTP {response.status_code}: {detail[:500]}"
 
 
 class CompliantProvider:
@@ -34,6 +61,7 @@ class CompliantProvider:
         transport: httpx.AsyncBaseTransport | None = None,
     ):
         self._credential = credential
+        validate_provider_base_url("compliant", base_url)
         self._base_url = _normalize_base_url(base_url or "")
         self._transport = transport
         self._client: httpx.AsyncClient | None = None
@@ -42,8 +70,8 @@ class CompliantProvider:
         if self._client is not None:
             try:
                 await self._client.aclose()
-            except Exception:  # pragma: no cover - best effort
-                pass
+            except Exception as exc:  # pragma: no cover - best effort
+                logger.debug("Could not close compliant provider client: %s", type(exc).__name__)
             self._client = None
 
     def _client_for(self) -> httpx.AsyncClient:
@@ -54,7 +82,8 @@ class CompliantProvider:
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
                 headers=headers,
-                timeout=30.0,
+                timeout=provider_timeout_seconds(),
+                follow_redirects=False,
                 transport=self._transport,
             )
         return self._client
@@ -81,20 +110,14 @@ class CompliantProvider:
             headers=headers or {},
         )
         if response.status_code >= 400:
-            detail = response.text
-            try:
-                payload = response.json()
-            except ValueError:
-                payload = None
-            if isinstance(payload, dict):
-                detail = payload.get("message") or payload.get("detail") or detail
+            detail = _error_detail(response)
             error_headers = {}
             retry_after = response.headers.get("Retry-After")
             if retry_after is not None:
                 error_headers["Retry-After"] = retry_after
             raise HTTPException(
                 status_code=response.status_code,
-                detail=str(detail),
+                detail=detail,
                 headers=error_headers or None,
             )
         if response_headers is not None:

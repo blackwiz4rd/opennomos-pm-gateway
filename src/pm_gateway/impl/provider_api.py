@@ -6,7 +6,6 @@ import inspect
 import logging
 from datetime import timezone
 from typing import Any
-from urllib.parse import quote
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -35,6 +34,7 @@ from pm_gateway.generated.models.workspace import Workspace
 from pm_gateway.generated.models.workspace_page import WorkspacePage
 from pm_gateway.generated.models.work_item import WorkItem
 from pm_gateway.generated.models.work_item_page import WorkItemPage
+from pm_gateway.security import path_segment, validate_native_identifiers
 
 logger = logging.getLogger("pm_gateway.adapters")
 
@@ -241,11 +241,11 @@ def _request_body(value: Any) -> Any:
 def _segment(value: Any) -> str:
     """Percent-encode an ID before interpolating it into an upstream URL path.
 
-    Without this, a client-supplied value such as ``../../admin`` escapes the
-    route template on the remote host (and the provider credential is attached
-    to the resulting request).
+    Dot segments are rejected outright: percent-encoding a bare ``.`` or ``..``
+    does not stop URL normalization, so ``/workspaces/../containers`` would
+    otherwise escape the standard route template on the remote host.
     """
-    return quote(str(value), safe="")
+    return path_segment(value)
 
 
 class _Proxied:
@@ -443,6 +443,8 @@ async def _dispatch(operation: str, params: dict[str, Any], provider: str, crede
     provider = normalize_provider(provider)
     params["x_pm_provider"] = provider
     validate_provider_context(provider, credential, base_url)
+    if provider != "compliant":
+        validate_native_identifiers(provider, params)
     if provider == "compliant":
         async with open_provider(provider, credential, base_url) as adapter:
             return await _dispatch_compliant(operation, params, adapter)

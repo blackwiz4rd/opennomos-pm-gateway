@@ -15,6 +15,10 @@ of OpenNomos. The package lives in its own repository,
 
 Requires Python 3.11 or newer.
 
+> The first PyPI release is pending. Until `opennomos-pm-gateway` is published,
+> install from source using the Development section and verify the publisher
+> before installing a package with this name.
+
 ```sh
 # SDK only
 pip install opennomos-pm-gateway
@@ -220,11 +224,17 @@ gateway bearer token, or make an HTTP request to the gateway.
 Create a `PMGateway` and pass the provider credentials on each `execute` call.
 Supported provider keys are `plane`, `jira`, `planner`, and `compliant`. Jira and
 compliant providers require their site URL as `base_url`; Plane and Planner use
-their documented defaults unless you supply a URL. Credentials use the provider's
-expected format: Plane API token, Jira `email:api-token`, Planner
-`tenant_id:client_id:client_secret`, or, for a compliant provider, the bearer
-token accepted by the remote service. Keep credentials in a secret store or
-environment variables, not in source control.
+their documented defaults unless an allowlisted URL is supplied. `base_url` is
+security-sensitive because it decides where the provider credential is sent:
+HTTPS is required, known SaaS endpoints (Jira Cloud, Plane Cloud, and Microsoft
+Graph) are trusted by default, and every other host must be explicitly
+allowlisted with `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS`. Planner is restricted to
+Microsoft Graph endpoints. Never pair a stored credential with an untrusted base
+URL.
+Credentials use the provider's expected format: Plane API token, Jira
+`email:api-token`, Planner `tenant_id:client_id:client_secret`, or, for a
+compliant provider, the bearer token accepted by the remote service. Keep
+credentials in a secret store or environment variables, not in source control.
 
 ```python
 import asyncio
@@ -331,7 +341,8 @@ OpenAPI contract directly. The gateway does not map that software's native model
 through an adapter. Instead, it forwards the standard operation to the remote
 service and returns the remote standard payload unchanged (parsed into the
 generated models). This lets an unknown PM tool become usable without a
-bespoke adapter.
+bespoke adapter. The example host below is not a built-in default; allowlist it
+with `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS=tools.example.com` before calling.
 
 ```python
 gateway = PMGateway()
@@ -347,11 +358,14 @@ page = await gateway.execute(
 
 Rules for compliant providers:
 
-- `base_url` is required and must be an absolute HTTP(S) URL without embedded
-  credentials, a query, or a fragment. If the path does not already end with
-  `/pm/v1` (case-insensitive), the gateway appends it. The remote service must
-  therefore expose the standard operations under that base path. Use `https` in
-  production: the provider credential is sent to whatever host is configured.
+- `base_url` is required and must be an absolute HTTPS URL without embedded
+  credentials, a query, or a fragment. Plain HTTP is rejected unless
+  `PM_GATEWAY_ALLOW_INSECURE_HTTP=1` is set for local development. If the path
+  does not already end with `/pm/v1` (case-insensitive), the gateway appends it.
+  The remote service must therefore expose the standard operations under that
+  base path. The provider credential is sent to whatever host is configured, so
+  treat the host as part of the credential boundary. There is no default
+  compliant host: add it to `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` before use.
 - The provider credential is forwarded only as `Authorization: Bearer <token>`.
   Gateway-side headers such as `X-PM-Provider`, `X-PM-Provider-Credential`, and
   `X-PM-Provider-Base-Url` are not sent upstream. When `list_workspaces` is
@@ -370,10 +384,12 @@ Rules for compliant providers:
   `If-Match` is forwarded on `update_work_item` and `transition_work_item`, so
   conditional updates work end-to-end through the gateway.
 - Upstream HTTP errors are surfaced as `fastapi.HTTPException` with the remote
-  status code and the remote `message`/`detail` when available; a remote
-  `Retry-After` header (for example on `429`) is forwarded to the caller. A
-  remote implementation that does not support an optional operation should
-  return the appropriate standard error itself.
+  status code. The remote body is replaced with a generic message by default;
+  set `PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS=1` to include a bounded remote
+  `message`/`detail` for debugging. A remote `Retry-After` header (for example
+  on `429`) is always forwarded to the caller. A remote implementation that does
+  not support an optional operation should return the appropriate standard error
+  itself.
 - The remote implementation is assumed to be a standalone standard API, not
   another pm-gateway instance behind the same auth middleware.
 
@@ -438,10 +454,13 @@ start this HTTP service. To run it as a container:
 
 ```sh
 docker build -t opennomos-pm-gateway .
-docker run --rm -p 8080:8080 \
+docker run --rm -p 127.0.0.1:8080:8080 \
   -e PM_GATEWAY_API_TOKEN='replace-with-a-long-random-secret' \
   opennomos-pm-gateway
 ```
+
+Bind published ports to localhost or a private interface, and terminate TLS in
+front of the service.
 
 ## Development
 
@@ -458,6 +477,50 @@ When working from the OpenNomos monorepo, run these from `pm-gateway/`.
 
 Release steps are documented in
 [RELEASING.md](https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/RELEASING.md).
+
+## Security
+
+Provider credentials and the gateway token are bearer secrets. Treat the service
+as a trusted backend component, not as an authorization boundary.
+
+- Terminate TLS in front of the service. Do not expose the gateway token or
+  `X-PM-Provider-Credential` over plaintext.
+- Use a long random `PM_GATEWAY_API_TOKEN`. The service fails closed when it is
+  unset. Apply rate limiting at the reverse proxy.
+- `base_url` is part of the credential boundary. HTTPS is required; only known
+  SaaS endpoints are trusted by default, and every other host must be
+  explicitly allowlisted. Planner is limited to Graph endpoints. Never let an
+  untrusted user choose the base URL for a stored credential. The built-in
+  `*.atlassian.net` wildcard trusts any Atlassian Cloud site; for stored
+  credentials paired with user-controlled base URLs, prefer an exact-host
+  allowlist.
+- Any caller with the gateway token can use any provider credential it supplies.
+  The OpenNomos backend must scope credentials to the user or integration and
+  validate integration base URLs.
+- Provider credentials are request-scoped and not persisted or logged. Configure
+  the reverse proxy not to log `Authorization` or `X-PM-Provider-Credential`.
+- Upstream error bodies are hidden by default. Set
+  `PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS=1` only for debugging.
+- Descriptions may be `text/plain` or `text/html`. Sanitize HTML before rendering
+  it in a browser.
+- Apply request-size and rate limits at the proxy. Provider requests time out
+  after `PM_GATEWAY_PROVIDER_TIMEOUT_SECONDS` (default 30).
+- Run the container with a read-only filesystem, no added capabilities, and
+  `no-new-privileges`; the image runs as uid 10001.
+- Report vulnerabilities using the process in `SECURITY.md`.
+
+### Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PM_GATEWAY_API_TOKEN` | required | Bearer token for the HTTP service. |
+| `PM_GATEWAY_HOST` | `127.0.0.1` | HTTP listen address. |
+| `PM_GATEWAY_PORT` | `8080` | HTTP listen port. |
+| `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` | empty | Comma-separated host allowlist; supports `*.example.com`. Required for any host not covered by the built-in Jira Cloud, Plane Cloud, and Microsoft Graph defaults. |
+| `PM_GATEWAY_ALLOW_INSECURE_HTTP` | off | Allow `http://` provider URLs. Use only for local development. |
+| `PM_GATEWAY_PROVIDER_TIMEOUT_SECONDS` | `30` | Timeout for provider HTTP requests. |
+| `PM_GATEWAY_MAX_BODY_BYTES` | `1048576` | Maximum request body accepted by the HTTP service. |
+| `PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS` | off | Include bounded upstream error text in responses. |
 
 ## License
 

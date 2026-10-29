@@ -20,6 +20,7 @@ class NormalizedWorkItem(BaseModel):
     identifier: str | None = None
     title: str = ""
     description: str | None = None
+    description_content_type: str | None = None
     url: str | None = None
 
     # Status

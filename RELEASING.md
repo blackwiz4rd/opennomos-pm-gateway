@@ -56,6 +56,28 @@ it public or point the URLs at a public mirror.
 No `PYPI_API_TOKEN` secret is required; the workflow uses OIDC trusted
 publishing.
 
+### Repository and release security
+
+Before the first public release:
+
+- Reserve the PyPI project name immediately. `opennomos-pm-gateway` was still
+  unregistered when this checklist was written, and the GitHub repository is
+  public; an attacker could otherwise publish a malicious package under the
+  name the README tells users to install.
+- Enable GitHub private vulnerability reporting and the `SECURITY.md` contact
+  path.
+- Enable Dependabot alerts/updates for Python and GitHub Actions, secret
+  scanning, and push protection.
+- Protect `main` and release tags: require CI, prevent force pushes/deletions,
+  and limit who can create `v*` tags.
+- Add required reviewers to the `pypi` environment so publishing is deliberate.
+- Keep `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` explicit for any Jira/Plane host not
+  covered by the built-in Jira Cloud/Plane Cloud defaults, and for every
+  compliant provider. Never let an untrusted user choose a stored credential's
+  base URL.
+- Never commit `.env`, provider tokens, or the gateway bearer token. Use a
+  secret manager and rotate any value that has been exposed.
+
 ## 2. Version and changelog
 
 1. Update `src/pm_gateway/_version.py`.

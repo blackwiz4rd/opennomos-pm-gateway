@@ -29,6 +29,7 @@ from pm_gateway.adapters.normalization import (
     normalize_priority_value,
     normalize_state_category,
 )
+from pm_gateway.security import provider_timeout_seconds
 
 logger = logging.getLogger("pm_gateway.adapters.jira")
 
@@ -44,6 +45,30 @@ _VALID_EXPANDS = {
 }
 
 _ISSUE_KEY_RE = re.compile(r"^(?P<identifier>[A-Za-z][A-Za-z0-9]*)-(?P<sequence>\d+)$")
+_JIRA_PROJECT_ID_RE = re.compile(r"^(?:[A-Za-z][A-Za-z0-9_]*|\d+)$")
+_JIRA_ISSUE_ID_RE = re.compile(r"^(?:[A-Za-z][A-Za-z0-9_]*-\d+|\d+)$")
+_JIRA_NUMERIC_ID_RE = re.compile(r"^\d+$")
+
+
+def _validate_project_id(project_id: str) -> str:
+    value = str(project_id)
+    if not _JIRA_PROJECT_ID_RE.fullmatch(value):
+        raise ValueError("Invalid Jira project key or ID.")
+    return value
+
+
+def _validate_issue_id(work_item_id: str) -> str:
+    value = str(work_item_id)
+    if not _JIRA_ISSUE_ID_RE.fullmatch(value):
+        raise ValueError("Invalid Jira issue key or ID.")
+    return value
+
+
+def _validate_numeric_id(value: str, field: str) -> str:
+    text = str(value)
+    if not _JIRA_NUMERIC_ID_RE.fullmatch(text):
+        raise ValueError(f"Invalid Jira {field}.")
+    return text
 
 # Jira answers HTTP 400 with these messages when a board cannot serve the
 # requested agile scope (e.g. Kanban boards with no sprints or backlog).
@@ -76,8 +101,8 @@ class JiraProvider:
             if close is not None:
                 try:
                     await asyncio.to_thread(close)
-                except Exception:  # pragma: no cover - best-effort cleanup
-                    pass
+                except Exception as exc:  # pragma: no cover - best-effort cleanup
+                    logger.debug("Could not close Jira client: %s", type(exc).__name__)
         self._clients.clear()
 
     async def _ensure(self, workspace_slug: str) -> JIRA:
@@ -104,10 +129,20 @@ class JiraProvider:
 
     @staticmethod
     def _build_client(base_url: str, api_key: str) -> JIRA:
+        timeout = provider_timeout_seconds()
         if ":" in api_key:
             email, token = api_key.split(":", 1)
-            return JIRA(server=base_url, basic_auth=(email.strip(), token.strip()))
-        return JIRA(server=base_url, token_auth=api_key)
+            client = JIRA(
+                server=base_url,
+                basic_auth=(email.strip(), token.strip()),
+                timeout=timeout,
+            )
+        else:
+            client = JIRA(server=base_url, token_auth=api_key, timeout=timeout)
+        # Jira requests carry the provider credential. Do not follow redirects:
+        # a hostile or compromised site could otherwise receive the credential.
+        client._session.max_redirects = 0
+        return client
 
     # ── normalization ──
 
@@ -311,6 +346,7 @@ class JiraProvider:
     async def _project_issues(
         self, client: JIRA, project_id: str, expand: str | None
     ) -> list[dict]:
+        project_id = _validate_project_id(project_id)
         jql = f"project = {project_id} ORDER BY created DESC"
         result = await asyncio.to_thread(
             client.search_issues,
@@ -377,6 +413,7 @@ class JiraProvider:
                     has_backlog = True
                     sprints.append({"id": "backlog", "name": "Backlog"})
                     continue
+                sid = _validate_numeric_id(sid, "sprint ID")
                 sprint = await self._sprint_by_id(client, resolved_board, sid)
                 if sprint is not None:
                     sprints.append({
@@ -415,7 +452,7 @@ class JiraProvider:
         of the box, falling back to the first board otherwise.
         """
         if board_id:
-            return str(board_id)
+            return _validate_numeric_id(board_id, "board ID")
         boards = list(
             await asyncio.to_thread(
                 client.boards,
@@ -478,6 +515,7 @@ class JiraProvider:
         A board can be shared across projects (its filter spans several), so the
         result is narrowed to ``project_id`` when given.
         """
+        board_id = _validate_numeric_id(board_id, "board ID")
         if sprint_ids:
             all_issues = []
             seen = set()
@@ -485,6 +523,7 @@ class JiraProvider:
                 if sid == "backlog":
                     path = f"board/{board_id}/backlog"
                 else:
+                    sid = _validate_numeric_id(sid, "sprint ID")
                     path = f"board/{board_id}/sprint/{sid}/issue"
                 result = await self._fetch_board_issues(client, path)
                 if result is None:
@@ -541,6 +580,7 @@ class JiraProvider:
         work_item_id: str,
     ) -> dict:
         client = await self._ensure(workspace_slug)
+        work_item_id = _validate_issue_id(work_item_id)
         issue = await asyncio.to_thread(client.issue, work_item_id)
         return self._issue_to_dict(issue)
 
@@ -552,6 +592,7 @@ class JiraProvider:
         against the site's status list. Returns None when the board config
         cannot be read so the caller can fall back to project-wide statuses.
         """
+        board_id = _validate_numeric_id(board_id, "board ID")
         try:
             config = await asyncio.to_thread(
                 client._get_json, f"agile/1.0/board/{board_id}/configuration"
@@ -606,6 +647,7 @@ class JiraProvider:
         data: dict,
     ) -> dict:
         client = await self._ensure(workspace_slug)
+        work_item_id = _validate_issue_id(work_item_id)
         target = (data or {}).get("state")
         if target:
             await asyncio.to_thread(self._transition, client, work_item_id, str(target))

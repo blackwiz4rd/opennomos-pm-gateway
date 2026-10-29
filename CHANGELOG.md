@@ -25,6 +25,23 @@ First alpha technical preview.
   forwarding for compliant providers.
 - Apache-2.0 licensing, PEP 561 `py.typed` marker, and complete PyPI metadata.
 
+### Security
+
+- Provider base URLs must use HTTPS and target public hosts unless explicitly
+  allowlisted; private, loopback, link-local, and metadata addresses are
+  rejected. Planner is restricted to Microsoft Graph endpoints.
+- Native provider identifiers are validated before use in Jira, Plane, and
+  Planner paths; Jira project/issue/board/sprint IDs are validated to prevent
+  JQL and path injection. Compliant path segments reject dot-segment traversal.
+- Upstream error bodies are hidden by default and bounded when explicitly
+  enabled with `PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS`.
+- Jira requests now have a timeout and do not follow redirects.
+- Request bodies are size-limited, security headers are added, and HTTP
+  provider URLs require an explicit development opt-in.
+- Docker and CI hardening: pinned base image/actions, non-root runtime with
+  dropped capabilities, image scanning, dependency auditing, and a single
+  checksum-verified OpenAPI generator download.
+
 ### Known limitations
 
 - Comments, attachments, custom-field writes, milestones, and general work-item
