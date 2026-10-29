@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opennomos-pm-gateway"
+dynamic = ["version"]
+description = "Vendor-neutral project-management interoperability SDK and optional HTTP gateway"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "OpenNomos contributors" },
+]
+keywords = [
+    "project-management",
+    "interoperability",
+    "jira",
+    "plane",
+    "microsoft-planner",
+    "openapi",
+    "sdk",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "httpx>=0.28.0,<1.0.0",
+    "jira>=3.10.5,<4.0.0",
+    "msal>=1.24.0,<2.0.0",
+    "plane-sdk>=0.2.13,<1.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "uvicorn[standard]>=0.30.0,<1.0.0",
+]
+dev = [
+    "build>=1.2.0",
+    "httpx>=0.28.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "PyYAML>=6.0",
+    "twine>=5.0.0",
+]
+
+[project.scripts]
+pm-gateway = "pm_gateway.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/blackwiz4rd/opennomos-pm-gateway"
+Documentation = "https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/README.md"
+Source = "https://github.com/blackwiz4rd/opennomos-pm-gateway"
+Issues = "https://github.com/blackwiz4rd/opennomos-pm-gateway/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pm_gateway*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pm_gateway._version.__version__" }
+
+[tool.setuptools.package-data]
+pm_gateway = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
