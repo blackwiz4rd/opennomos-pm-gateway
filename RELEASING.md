@@ -60,10 +60,8 @@ publishing.
 
 Before the first public release:
 
-- Reserve the PyPI project name immediately. `opennomos-pm-gateway` was still
-  unregistered when this checklist was written, and the GitHub repository is
-  public; an attacker could otherwise publish a malicious package under the
-  name the README tells users to install.
+- The PyPI project name is registered. Keep trusted publishing configured and
+  the `pypi` environment reviewer rule in place for future releases.
 - Enable GitHub private vulnerability reporting and the `SECURITY.md` contact
   path.
 - Enable Dependabot alerts/updates for Python and GitHub Actions, secret

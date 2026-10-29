@@ -15,9 +15,8 @@ of OpenNomos. The package lives in its own repository,
 
 Requires Python 3.11 or newer.
 
-> The first PyPI release is pending. Until `opennomos-pm-gateway` is published,
-> install from source using the Development section and verify the publisher
-> before installing a package with this name.
+> Published on PyPI as
+> [`opennomos-pm-gateway`](https://pypi.org/project/opennomos-pm-gateway/).
 
 ```sh
 # SDK only
