@@ -59,6 +59,7 @@ dev = [
 
 [project.scripts]
 pm-gateway = "pm_gateway.__main__:main"
+pm-gateway-conformance = "pm_gateway.conformance:main"
 
 [project.urls]
 Homepage = "https://github.com/blackwiz4rd/opennomos-pm-gateway"

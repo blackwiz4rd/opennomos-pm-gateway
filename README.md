@@ -37,7 +37,7 @@ The gateway is built in the following order of priority:
 | --- | --- | --- | --- |
 | 1 | Standard | Provide a global standard terminology and API for project management tools (provider-neutral vocabulary + single OpenAPI contract). | In progress (v0.1 draft) |
 | 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner) |
-| 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | In progress (compliant provider routing) |
+| 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | In progress (passthrough routing and conformance checker implemented) |
 | 4 | SDKs | Provide SDK support for different programming languages beyond Python. | Planned |
 
 ### 1. Global standard terminology and API
@@ -60,8 +60,10 @@ immediate priority after the standard stabilizes.
 
 Make it possible for any PM tool to become compliant with the standard on its own, so
 the gateway can simply re-route requests to it instead of maintaining a bespoke adapter.
-This means publishing a conformance specification and tests, and supporting a
-passthrough/router mode for compliant providers.
+This requires a published conformance checklist and checker plus a
+passthrough/router mode for compliant providers. The wire-level checklist and
+checker are implemented; semantic conformance and live-provider CI remain
+follow-ups.
 
 #### Example: a small compliant PM tool ("TinyTasks")
 
@@ -89,9 +91,12 @@ gateway can treat it as a compliant provider and just re-route.
   is stateless about gateway credentials and never stores them.
 
 Because TinyTasks speaks the standard contract, the gateway does not need a
-TinyTasks-specific adapter: it validates the tool against the conformance suite, then
-re-routes incoming requests to TinyTasks' base URL, translating only transport/auth
-concerns. Any other small PM tool can follow the same pattern to become compliant.
+TinyTasks-specific adapter: it re-routes incoming requests to TinyTasks' base
+URL, translating only transport and authentication concerns. Compliance is
+verified with the bundled conformance checker (see
+[Becoming a compliant provider](#becoming-a-compliant-provider)); the gateway
+itself does not run conformance tests at request time. Any other small PM tool
+can follow the same pattern to become compliant.
 ### 4. SDK support for multiple languages
 
 Ship first-party SDKs beyond Python (e.g. TypeScript/JavaScript, Go, …) so consumers
@@ -394,6 +399,100 @@ Rules for compliant providers:
 
 The same behavior is available over HTTP: send `X-PM-Provider: compliant`,
 `X-PM-Provider-Credential`, and `X-PM-Provider-Base-Url` with each request.
+
+## Becoming a compliant provider
+
+A third-party PM tool becomes usable through the `compliant` provider by
+implementing the standard API itself. The gateway does not translate the tool's
+native model; it forwards the standard operation to the tool and parses the
+standard response. The normative contract is
+[`spec/pm-api-openapi-v0.1.yaml`](spec/pm-api-openapi-v0.1.yaml).
+
+For a step-by-step implementation brief written for AI coding agents — including
+OpenAPI scaffold generation, per-endpoint behavior, authentication, pagination,
+merge-patch, and ETags — see
+[`docs/compliance-implementation-guide.md`](docs/compliance-implementation-guide.md).
+
+### Core Read checklist
+
+Core Read is the minimum profile. These operations must work:
+
+| Operation | Method and path | Required response |
+| --- | --- | --- |
+| `get_capabilities` | `GET /pm/v1/capabilities` | `{apiVersion, coreProfile, features}` |
+| `list_workspaces` | `GET /pm/v1/workspaces` | `{items, nextCursor}` with `id`, `name`, `provider.key` |
+| `list_containers` | `GET /pm/v1/workspaces/{workspaceId}/containers` | `{items, nextCursor}` with `id`, `kind`, `name` |
+| `list_work_items` | `GET /pm/v1/workspaces/{workspaceId}/containers/{containerId}/work-items` | `{items, nextCursor}` with `id`, `title`, `source` |
+| `get_work_item` | `GET /pm/v1/workspaces/{workspaceId}/work-items/{workItemId}` | a `WorkItem` with `id`, `title`, `source` |
+
+Optional operations (`boards`, `board-scope`, `workflow-states`, `transitions`,
+`custom-fields`, `iterations`, `milestones`, `comments`, `attachments`,
+`update_work_item`) may be omitted, but must be reported truthfully in
+`capabilities` and return `501 not_supported` when unavailable. The `boards`
+operation is the documented exception: return an empty page and advertise
+`boards.list: false`.
+
+Wire-level requirements that commonly cause failures:
+
+- Authenticate every operation with `Authorization: Bearer <token>`; the
+  gateway does not forward its `X-PM-Provider*` headers upstream.
+- Mount the API under `/pm/v1`. Path IDs arrive percent-encoded.
+- Use `nextCursor` (camelCase), not `next_cursor`; the last page returns `null`.
+- Reject unsupported filters with `400 invalid_request`; never silently ignore
+  them.
+- Return errors as `ApiError` JSON (`{code, message}`), not HTML or plain text.
+- Accept both `application/json` and `application/merge-patch+json` for
+  `PATCH`; the gateway currently sends `application/json`.
+- If you emit an `ETag`, enforce `If-Match` and return `412
+  precondition_failed` on a stale revision.
+- Keep core work items closed to ad-hoc fields (`additionalProperties: false`);
+  use the namespaced `extensions` object for provider-specific values.
+
+### Verify conformance
+
+The package ships a read-only-by-default checker:
+
+```sh
+pip install -e '.[server,dev]'
+
+pm-gateway-conformance \
+  --base-url https://tools.example.com \
+  --token-env COMPLIANT_TOKEN
+```
+
+Add `--full` to probe optional read operations, `--json` for CI, and `--write`
+plus `--transition-to`/`--transition-to-id` for mutating checks in a staging
+environment. Exit codes are `0` (no failures), `1` (a check failed), and `2`
+(invalid configuration). An `INCOMPLETE` result means required checks were
+skipped for lack of accessible fixtures (for example, no workspace is visible to
+the token); rerun with explicit IDs for a certification run. A `COMPLIANT`
+result requires every required check to pass.
+
+The checker verifies wire shapes, pagination basics, `401`/`404` error shapes,
+capability claims for probed operations, and (opt-in) updates and transitions.
+It does not prove semantic mapping quality, tenant isolation, filter
+correctness, or rate-limit behavior; test those separately. See the
+implementation guide for a manual test matrix.
+
+### Point the gateway at the tool
+
+```sh
+export PM_GATEWAY_ALLOWED_PROVIDER_HOSTS='tools.example.com'
+```
+
+Then send `X-PM-Provider: compliant`, `X-PM-Provider-Credential`, and
+`X-PM-Provider-Base-Url` with each request, or use the SDK:
+
+```python
+page = await gateway.execute(
+    Operation.LIST_WORK_ITEMS,
+    provider=Provider.COMPLIANT,
+    credential=os.environ["COMPLIANT_TOKEN"],
+    base_url="https://tools.example.com",
+    workspaceId="workspace-1",
+    containerId="project-1",
+)
+```
 
 ## Generated server code
 

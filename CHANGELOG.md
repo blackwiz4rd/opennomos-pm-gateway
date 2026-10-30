@@ -6,6 +6,16 @@ versioned separately in the OpenAPI document.
 
 ## [Unreleased]
 
+### Added
+
+- `pm-gateway-conformance` checker and `pm_gateway.conformance` module for
+  verifying third-party implementations of the standard API. Read-only by
+  default; `--write`, `--transition-to`, and `--full` enable optional checks.
+- Compliance implementation guide
+  (`docs/compliance-implementation-guide.md`) with OpenAPI scaffold generation,
+  per-endpoint behavior, authentication, pagination, merge-patch, and ETag
+  guidance.
+
 ### Changed
 
 - Package versions are derived from git tags with `setuptools-scm`.
@@ -59,4 +69,5 @@ First alpha technical preview.
 - Microsoft Planner has not been validated against a live tenant.
 - The SDK raises `fastapi.HTTPException` for provider errors; a framework-neutral
   exception hierarchy is planned before 1.0.
-- No conformance suite, public governance process, or live-provider CI yet.
+- No live-provider CI or semantic conformance suite yet; the
+  `pm-gateway-conformance` checker covers wire-level behavior only.

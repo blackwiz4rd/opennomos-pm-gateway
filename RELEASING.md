@@ -192,6 +192,7 @@ This prevents two distributions from owning the same `pm_gateway` files.
   exception hierarchy.
 - Add typed `execute` overloads or generated SDK methods.
 - Implement provider-native pagination instead of in-memory slicing.
-- Add live-provider smoke tests and a conformance suite.
+- Add live-provider smoke tests and expand the wire-level conformance checker
+  (`pm-gateway-conformance`) into a semantic conformance suite.
 - Publish a standalone specification document with RFC 2119 language and a
   versioning/governance policy.
