@@ -206,7 +206,12 @@ def as_work_item(
             for target in (raw.get(key) or [])
         )
 
-    resource_type = {"jira": "issue", "planner": "task", "plane": "work-item"}[provider]
+    resource_type = {
+        "jira": "issue",
+        "planner": "task",
+        "plane": "work-item",
+        "monday": "item",
+    }[provider]
     url_base = base_url
     if provider == "plane" and not url_base:
         url_base = "https://app.plane.so"

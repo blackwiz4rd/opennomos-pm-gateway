@@ -66,7 +66,12 @@ _UNSUPPORTED_OPERATIONS = frozenset(
     }
 )
 
-_PROVIDER_NAMES = {"plane": "Plane", "jira": "Jira", "planner": "Microsoft Planner"}
+_PROVIDER_NAMES = {
+    "plane": "Plane",
+    "jira": "Jira",
+    "planner": "Microsoft Planner",
+    "monday": "monday.com",
+}
 
 
 def _arguments(base: type, operation: str, args: tuple, kwargs: dict) -> dict[str, Any]:
@@ -558,7 +563,7 @@ async def _dispatch(operation: str, params: dict[str, Any], provider: str, crede
             )
 
         if operation == "transition_work_item":
-            if provider in {"plane", "planner"} and not container_id:
+            if provider in {"plane", "planner", "monday"} and not container_id:
                 raise HTTPException(
                     status_code=400,
                     detail="containerId is required by this provider to transition the work item.",

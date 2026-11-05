@@ -18,6 +18,7 @@ keywords = [
     "interoperability",
     "jira",
     "plane",
+    "monday",
     "microsoft-planner",
     "openapi",
     "sdk",
@@ -82,3 +83,6 @@ pm_gateway = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "live: exercises a real provider API; skipped unless credentials are configured",
+]

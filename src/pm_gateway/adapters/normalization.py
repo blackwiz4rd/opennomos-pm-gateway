@@ -25,6 +25,11 @@ _STATE_CATEGORY_MAP: dict[str, str] = {
     "in progress": "started",
     "in-progress": "started",
     "done": "completed",
+    # monday.com group titles (free-form, but these are the defaults)
+    "working on it": "started",
+    "stuck": "started",
+    "in review": "started",
+    "ready": "unstarted",
     # Generic
     "open": "unstarted",
     "closed": "completed",
@@ -57,7 +62,10 @@ def normalize_state_category(group: str | None) -> str | None:
 # 3=medium, 4=low). This follows the Linear convention.
 _PRIORITY_VALUE_MAP: dict[str, int] = {
     "urgent": 1,
+    "critical": 1,
+    "highest": 1,
     "high": 2,
+    "important": 2,
     "medium": 3,
     "normal": 3,
     "low": 4,

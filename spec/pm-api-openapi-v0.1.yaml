@@ -648,16 +648,16 @@ components:
       description: Adapter key selected by OpenNomos.
       schema:
         type: string
-        enum: [plane, jira, planner]
+        enum: [plane, jira, planner, monday]
     ProviderCredential:
       name: X-PM-Provider-Credential
       in: header
       required: true
       description: >-
         Provider credential value held by OpenNomos and forwarded for this
-        request only. Plane/Jira use their API token form; Planner uses
-        tenant_id:client_id:client_secret. Gateways and intermediaries must
-        not persist or log this header. TLS is required.
+        request only. Plane/Jira/monday.com use their API token form; Planner
+        uses tenant_id:client_id:client_secret. Gateways and intermediaries
+        must not persist or log this header. TLS is required.
       schema:
         type: string
         format: password
@@ -669,7 +669,8 @@ components:
       required: false
       description: >-
         Optional provider API base URL from the OpenNomos credential record.
-        Jira requires it; Plane and Planner use their documented defaults.
+        Jira requires it; Plane, Planner, and monday.com use their documented
+        defaults.
       schema:
         type: string
         format: uri

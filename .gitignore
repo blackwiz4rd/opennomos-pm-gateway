@@ -47,3 +47,6 @@ coverage.xml
 # Working drafts kept out of the package
 OSLC.md
 STANDARDIZATION_ROADMAP.md
+
+# Local live-provider test reports
+reports/

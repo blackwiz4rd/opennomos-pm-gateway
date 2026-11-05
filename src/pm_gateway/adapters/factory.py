@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 from pm_gateway.adapters.compliant import CompliantProvider
 from pm_gateway.adapters.jira import JiraProvider
+from pm_gateway.adapters.monday import MondayProvider
 from pm_gateway.adapters.plane import PlaneProvider
 from pm_gateway.adapters.planner import PlannerProvider
 from pm_gateway.security import (
@@ -13,7 +14,9 @@ from pm_gateway.security import (
     validate_provider_destination,
 )
 
-SUPPORTED_PROVIDERS = frozenset({"plane", "jira", "planner", "compliant"})
+SUPPORTED_PROVIDERS = frozenset(
+    {"plane", "jira", "planner", "monday", "compliant"}
+)
 
 
 def normalize_provider(provider: str) -> str:
@@ -44,6 +47,7 @@ async def open_provider(
         "plane": PlaneProvider,
         "jira": JiraProvider,
         "planner": PlannerProvider,
+        "monday": MondayProvider,
         "compliant": CompliantProvider,
     }[normalized]
     adapter = adapter_type(credential, validated_base_url)

@@ -36,7 +36,7 @@ The gateway is built in the following order of priority:
 | # | Phase | Goal | Status |
 | --- | --- | --- | --- |
 | 1 | Standard | Provide a global standard terminology and API for project management tools (provider-neutral vocabulary + single OpenAPI contract). | In progress (v0.1 draft) |
-| 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner) |
+| 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner, monday.com) |
 | 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | In progress (passthrough routing and conformance checker implemented) |
 | 4 | SDKs | Provide SDK support for different programming languages beyond Python. | Planned |
 
@@ -132,7 +132,7 @@ consumer; it is not a commitment or prioritization for the standalone gateway.
 | Smartsheet | Future candidate | — | Unsequenced | [9%](https://ramp.com/vendors/smartsheet) | [No — trial cannot issue API tokens](https://help.smartsheet.com/articles/529590-smartsheet-free-trial-faqs); Business/Enterprise required | Row in an explicitly selected Sheet |
 | Microsoft Planner | Implemented | **No** | Implemented | Not reported | [Conditional — OAuth, work/school tenant; personal accounts unsupported](https://learn.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0) | `plannerTask`; unit normalization tests exist, but no live/provider validation |
 | Asana | Planned | — | Could | [21%](https://ramp.com/vendors/asana) | [Yes — personal access token on Personal](https://developers.asana.com/docs/personal-access-token) | Task; preserve multi-project memberships |
-| monday.com | Planned | — | Could | [19%](https://ramp.com/vendors/monday) | [Yes — API token in free developer sandbox](https://developer.monday.com/api-reference/docs/developer-sandbox-account) | Item with runtime board columns |
+| monday.com | Implemented | Yes | Could | [19%](https://ramp.com/vendors/monday) | [Yes — API token in free developer sandbox](https://developer.monday.com/api-reference/docs/developer-sandbox-account) | Item with runtime board columns; board groups are the workflow states |
 | Airtable | Future candidate | — | Unsequenced | [16%](https://ramp.com/vendors/airtable) | [Yes — personal access token on Free](https://support.airtable.com/articles/9934989703-creating-personal-access-tokens); Free API quota applies | Record only after selecting/configuring a table |
 | Linear | Planned | — | Should | [15%](https://ramp.com/vendors/linear) | [Yes — personal API key on Free](https://linear.app/developers/graphql) | Issue |
 | ClickUp | Planned | — | Could | [9%](https://ramp.com/vendors/clickup) | [Yes — personal API token on Free Forever](https://developer.clickup.com/docs/authentication) | Task |
@@ -226,17 +226,20 @@ adapter in-process: you do not need to start the gateway service, configure a
 gateway bearer token, or make an HTTP request to the gateway.
 
 Create a `PMGateway` and pass the provider credentials on each `execute` call.
-Supported provider keys are `plane`, `jira`, `planner`, and `compliant`. Jira and
-compliant providers require their site URL as `base_url`; Plane and Planner use
-their documented defaults unless an allowlisted URL is supplied. `base_url` is
+Supported provider keys are `plane`, `jira`, `planner`, `monday`, and
+`compliant`. Jira and compliant providers require their site URL as `base_url`;
+Plane, Planner, and monday.com use their documented defaults unless an
+allowlisted URL is supplied. `base_url` is
 security-sensitive because it decides where the provider credential is sent:
-HTTPS is required, known SaaS endpoints (Jira Cloud, Plane Cloud, and Microsoft
-Graph) are trusted by default, and every other host must be explicitly
+HTTPS is required, known SaaS endpoints (Jira Cloud, Plane Cloud, Microsoft
+Graph, and monday.com) are trusted by default, and every other host must be
+explicitly
 allowlisted with `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS`. Planner is restricted to
 Microsoft Graph endpoints. Never pair a stored credential with an untrusted base
 URL.
 Credentials use the provider's expected format: Plane API token, Jira
-`email:api-token`, Planner `tenant_id:client_id:client_secret`, or, for a
+`email:api-token`, Planner `tenant_id:client_id:client_secret`, monday.com
+personal API token, or, for a
 compliant provider, the bearer token accepted by the remote service. Keep
 credentials in a secret store or environment variables, not in source control.
 
@@ -281,7 +284,8 @@ asyncio.run(main())
 `execute(operation, *, provider, credential, base_url=None, **params)` takes an
 `Operation` enum member and that operation's parameters. The `provider`
 argument takes a `Provider` enum member: `Provider.PLANE`, `Provider.JIRA`,
-`Provider.PLANNER`, or `Provider.COMPLIANT`. Use operation members such as
+`Provider.PLANNER`, `Provider.MONDAY`, or `Provider.COMPLIANT`. Use operation
+members such as
 `Operation.GET_CAPABILITIES`, `Operation.LIST_CONTAINERS`, or
 `Operation.LIST_WORK_ITEMS`; the enum is exported from `pm_gateway`. Parameter
 names follow the generated Python API signatures (for example, `workspaceId`,
@@ -536,11 +540,13 @@ configure the listener.
 The service mounts the draft OpenAPI API at `/pm/v1`. `/healthz` is an
 unauthenticated liveness endpoint; API operations require the gateway bearer token.
 
-Plane, Jira, and Microsoft Planner adapters are implemented in
+Plane, Jira, Microsoft Planner, and monday.com adapters are implemented in
 `src/pm_gateway/adapters/`. They support workspace/container discovery, work-item
 reads, workflow-state reads and transitions; Jira and Planner also expose their
-current board/bucket behavior. Capabilities mark custom fields, milestones,
-comments, attachments, and general field updates unsupported until implemented.
+current board/bucket behavior. monday.com maps boards to containers and board
+groups to workflow states; other board columns are surfaced through normalized
+custom fields. Capabilities mark custom fields, milestones, comments,
+attachments, and general field updates unsupported until implemented.
 The `compliant` provider is a passthrough to third-party software that implements
 the standard API directly.
 
@@ -571,6 +577,21 @@ python -m build
 python -m twine check dist/*
 ```
 
+The default suite is offline and does not call provider APIs. The optional live
+monday.com suite validates a real account and writes a compatibility matrix to
+`reports/monday-live/`:
+
+```sh
+MONDAY_LIVE=1 MONDAY_API_TOKEN='...' python -m pytest tests/live -m live -v
+```
+
+Add `MONDAY_LIVE_WRITE_BOARD_ID=<board id>` to also exercise the
+create/move/delete lifecycle on a disposable board; the test deletes the item it
+creates. `MONDAY_API_TOKEN` is read from the environment or from a local `.env`
+file (never committed), and is never printed. CI runs the same suite when the
+`MONDAY_API_TOKEN` repository secret is configured; the job is non-blocking and
+publishes the report as an artifact and in the workflow summary.
+
 When working from the OpenNomos monorepo, run these from `pm-gateway/`.
 
 Release steps are documented in
@@ -586,7 +607,8 @@ as a trusted backend component, not as an authorization boundary.
 - Use a long random `PM_GATEWAY_API_TOKEN`. The service fails closed when it is
   unset. Apply rate limiting at the reverse proxy.
 - `base_url` is part of the credential boundary. HTTPS is required; only known
-  SaaS endpoints are trusted by default, and every other host must be
+  SaaS endpoints (including `api.monday.com`) are trusted by default, and every
+  other host must be
   explicitly allowlisted. Planner is limited to Graph endpoints. Never let an
   untrusted user choose the base URL for a stored credential. The built-in
   `*.atlassian.net` wildcard trusts any Atlassian Cloud site; for stored
@@ -614,9 +636,11 @@ as a trusted backend component, not as an authorization boundary.
 | `PM_GATEWAY_API_TOKEN` | required | Bearer token for the HTTP service. |
 | `PM_GATEWAY_HOST` | `127.0.0.1` | HTTP listen address. |
 | `PM_GATEWAY_PORT` | `8080` | HTTP listen port. |
-| `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` | empty | Comma-separated host allowlist; supports `*.example.com`. Required for any host not covered by the built-in Jira Cloud, Plane Cloud, and Microsoft Graph defaults. |
+| `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` | empty | Comma-separated host allowlist; supports `*.example.com`. Required for any host not covered by the built-in Jira Cloud, Plane Cloud, Microsoft Graph, and monday.com defaults. |
 | `PM_GATEWAY_ALLOW_INSECURE_HTTP` | off | Allow `http://` provider URLs. Use only for local development. |
 | `PM_GATEWAY_PROVIDER_TIMEOUT_SECONDS` | `30` | Timeout for provider HTTP requests. |
+| `PM_GATEWAY_MONDAY_MAX_ITEMS` | `10000` | Maximum items fetched from one monday.com board listing (`0` disables the cap). |
+| `PM_GATEWAY_MONDAY_API_VERSION` | unset | Optional `API-Version` header sent to monday.com; the API default is used when unset. |
 | `PM_GATEWAY_MAX_BODY_BYTES` | `1048576` | Maximum request body accepted by the HTTP service. |
 | `PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS` | off | Include bounded upstream error text in responses. |
 

@@ -8,6 +8,17 @@ versioned separately in the OpenAPI document.
 
 ### Added
 
+- monday.com provider adapter (`Provider.MONDAY` / `X-PM-Provider: monday`).
+  Uses the monday.com GraphQL API with a personal API token; boards map to
+  containers, board groups to workflow states, and board columns to normalized
+  work-item fields and custom fields. Reads paginate through `items_page`,
+  transitions move items between groups, and `api.monday.com` is allowlisted by
+  default.
+- Live monday.com compatibility suite (`tests/live/`) gated on `MONDAY_LIVE=1`,
+  with an opt-in create/move/delete lifecycle on a disposable board and a
+  generated compatibility report (`reports/monday-live/`). CI runs it when the
+  `MONDAY_API_TOKEN` secret is present and publishes the report as an artifact
+  and workflow summary.
 - `pm-gateway-conformance` checker and `pm_gateway.conformance` module for
   verifying third-party implementations of the standard API. Read-only by
   default; `--write`, `--transition-to`, and `--full` enable optional checks.

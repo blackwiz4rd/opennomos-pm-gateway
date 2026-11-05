@@ -34,6 +34,7 @@ _DEFAULT_ALLOWED_HOSTS = {
     "jira": ("*.atlassian.net",),
     "plane": ("api.plane.so",),
     "planner": tuple(PLANNER_GRAPH_HOSTS),
+    "monday": ("api.monday.com",),
     "compliant": (),
 }
 
@@ -244,7 +245,7 @@ def validate_native_identifiers(provider: str, params: Mapping[str, Any]) -> Non
         for value in values:
             validate_native_id(value, "iteration_ids")
 
-    if provider in {"plane", "planner"}:
+    if provider in {"plane", "planner", "monday"}:
         workspace_id = params.get("workspaceId", params.get("workspace_id"))
         if workspace_id is not None:
             validate_native_id(workspace_id, "workspaceId")
