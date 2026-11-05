@@ -35,7 +35,7 @@ import httpx
 from pm_gateway._version import __version__
 
 CORE_PROFILE = "core-read-0.1"
-DEFAULT_TOKEN_ENV = "PM_CONFORMANCE_TOKEN"
+DEFAULT_AUTH_ENV_VAR = "PM_CONFORMANCE_TOKEN"
 DEFAULT_TIMEOUT = 10.0
 
 _MAPPING_QUALITIES = frozenset({"exact", "mapped", "lossy", "inferred", "unmapped"})
@@ -239,7 +239,8 @@ def _enum(
     obj: dict[str, Any], key: str, allowed: frozenset[str], context: str
 ) -> str:
     value = _string(obj, key, context)
-    assert value is not None
+    if value is None:
+        raise ConformanceError(f"{context}.{key}: must be a string, not null.")
     if value not in allowed:
         raise ConformanceError(
             f"{context}.{key}: {value!r} is not one of {sorted(allowed)}."
@@ -1027,8 +1028,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--token-env",
-        default=DEFAULT_TOKEN_ENV,
-        help=f"Environment variable holding the bearer token (default: {DEFAULT_TOKEN_ENV}).",
+        default=DEFAULT_AUTH_ENV_VAR,
+        help=f"Environment variable holding the bearer token (default: {DEFAULT_AUTH_ENV_VAR}).",
     )
     parser.add_argument("--workspace-id", help="Workspace ID to test instead of discovery.")
     parser.add_argument("--container-id", help="Container ID to test instead of discovery.")
