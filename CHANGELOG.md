@@ -33,6 +33,17 @@ versioned separately in the OpenAPI document.
 - Tagged `v*` releases publish the exact tag version to PyPI. TestPyPI
   publishing is disabled in CI for now.
 
+### Security
+
+- Pre-push secret scanning (`hooks/pre-push`, installed with
+  `./scripts/install-hooks.sh`, also usable as a `pre-commit` pre-push stage).
+  Blocks pushes whose commits add credential files (`.env`, `*.pem`, `id_rsa`, …)
+  or provider token patterns for monday.com, Plane, GitHub, Atlassian, AWS,
+  OpenAI, and Slack. Scoped to the pushed range, overridable per push with
+  `ALLOW_SECRETS=1`, and allowlistable per line with `# secret-scan:allow`.
+- CI `secret-scan` job runs gitleaks over the pushed range with a pinned,
+  checksum-verified binary; publishing a release now depends on it.
+
 ## [0.1.0a1] - 2026-10-29
 
 First alpha technical preview.

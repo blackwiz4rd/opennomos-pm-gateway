@@ -39,3 +39,35 @@ The gateway handles provider credentials but is not an authorization boundary:
 
 See `README.md` for the configuration options that enforce the provider
 destination policy.
+
+## Secret scanning
+
+Credentials must reach the gateway through the environment, never through the
+repository. Two gates enforce that:
+
+- **Locally, before every push.** `hooks/pre-push` scans the commits a push is
+  about to publish — not the working tree — and blocks the push when added lines
+  match a known credential pattern or when a credential file (`.env`, `.env.*`,
+  `*.pem`, `*.key`, `id_rsa`, `.pypirc`, …) is added. Install it once per clone:
+
+  ```sh
+  ./scripts/install-hooks.sh            # or: pre-commit install --hook-type pre-push
+  ```
+
+  `--check`, `--uninstall` and `--force` cover the other cases; `--force` backs
+  up a hook it does not own before replacing it.
+
+- **In CI, as a backstop.** The `secret-scan` job in
+  `.github/workflows/ci.yml` runs gitleaks against the pushed range, so
+  `git push --no-verify` still gets caught. Publishing a release depends on that
+  job succeeding.
+
+Rules live in one place: `hooks/pre-push` for the pattern list and
+`.gitleaks.toml` for the CI allowlist. To bypass the local hook for a single
+push, use `ALLOW_SECRETS=1 git push`; the skip is announced on stderr. For a
+known false positive, append `# secret-scan:allow` to the line.
+
+If a real credential was ever committed, rotating it is mandatory: it stays in
+local history even after the file is rewritten, and it is in the remote history
+once pushed.
+

@@ -594,6 +594,22 @@ publishes the report as an artifact and in the workflow summary.
 
 When working from the OpenNomos monorepo, run these from `pm-gateway/`.
 
+### Pre-push secret scanning
+
+Install the local hook once per clone (it lives in `.git/hooks`, so it is not
+shared automatically):
+
+```sh
+./scripts/install-hooks.sh            # --check, --uninstall, --force
+```
+
+The hook scans the commits a push is about to publish and blocks credential
+files (`.env`, `*.pem`, `id_rsa`, …) and secret-like values (monday.com, Plane,
+GitHub, Atlassian, AWS, OpenAI, Slack, private keys). To use the pre-commit
+framework instead, run `pre-commit install --hook-type pre-push`; both entry
+points call the same scanner in `hooks/pre-push`. See
+[SECURITY.md](SECURITY.md#secret-scanning) for the overrides.
+
 Release steps are documented in
 [RELEASING.md](https://github.com/blackwiz4rd/opennomos-pm-gateway/blob/main/RELEASING.md).
 
