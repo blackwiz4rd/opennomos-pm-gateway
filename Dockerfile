@@ -10,6 +10,12 @@ ENV PM_GATEWAY_HOST=0.0.0.0 \
 
 WORKDIR /app
 
+# Patch base-image packages in place so the pinned base digest does not keep
+# stale OS packages (e.g. apt/libapt-pkg CVE-2026-109518) that Trivy flags.
+RUN apt-get update \
+    && apt-get -y --no-install-recommends upgrade \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml README.md LICENSE ./
 COPY src/ ./src/
 
