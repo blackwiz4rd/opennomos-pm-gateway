@@ -1,0 +1,21 @@
+# Pre-commit framework configuration for opennomos-pm-gateway.
+#
+# This is the alternative to ./scripts/install-hooks.sh -- use one or the other,
+# not both, because both install a `pre-push` hook. With the framework:
+#
+#   pip install pre-commit && pre-commit install --hook-type pre-push
+#
+# The hook reuses the same scanner as the standalone installer, so the rules
+# live in exactly one place: hooks/pre-push.
+minimum_pre_commit_version: "3.0.0"
+repos:
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: Scan pushed commits for secrets
+        description: Blocks a push that adds credential files or secret-like strings.
+        entry: hooks/pre-push
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

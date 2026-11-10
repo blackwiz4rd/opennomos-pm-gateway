@@ -1,0 +1,19 @@
+# gitleaks configuration for opennomos-pm-gateway.
+#
+# The full upstream rule set applies unchanged; only obvious placeholders are
+# allowlisted so documentation and test fixtures do not turn CI red. Anything
+# that merely *looks* like a credential but is a real value still fails.
+#
+# Run locally with:  gitleaks git --config .gitleaks.toml
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders used in docs, .env examples and test fixtures"
+regexTarget = "match"
+regexes = [
+  '''(?i)your[_-]?(api[_-]?)?(token|key|secret|password)''',
+  '''(?i)(placeholder|changeme|change[_-]me|dummy|redacted|sample|example|fake)''',
+  '''(?i)x{4,}''',
+  '''(?i)not[_-]?a[_-]?real''',
+]

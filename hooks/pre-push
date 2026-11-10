@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+#
+# pm-gateway secret scan — pre-push hook
+#
+# Blocks a push when the commits being pushed introduce credential files or
+# secret-like strings. Working-tree state and untracked files are irrelevant
+# here: this inspects exactly what is about to become public.
+#
+# Install:  ./scripts/install-hooks.sh
+# Override: ALLOW_SECRETS=1 git push     (or: git push --no-verify)
+# Inline:   # secret-scan:allow  <-- same line is never reported
+#
+# Exit codes: 0 = clean, 1 = blocked.
+
+set -uo pipefail
+
+ZERO="0000000000000000000000000000000000000000"
+
+# ---------------------------------------------------------------------------
+# What counts as a secret
+# ---------------------------------------------------------------------------
+# Keep these anchored on the provider-specific prefixes that actually appear in
+# this project. A generic "any long string" rule is not worth the noise: bash
+# grep cannot tell an API token from a UUID.
+PATTERNS=(
+  # monday.com API token — a JWT whose payload opens with {"tid":
+  'eyJ0aWQiO[A-Za-z0-9_.-]{10,}'
+  # Plane API key
+  'plane_api_[a-f0-9]{20,}'
+  # GitHub tokens and fine-grained PATs
+  'gh[pousr]_[A-Za-z0-9]{36,}'
+  'github_pat_[A-Za-z0-9_]{40,}'
+  # Atlassian / Jira API tokens
+  'ATATT[A-Za-z0-9_=-]{20,}'
+  # OpenAI / Anthropic keys
+  'sk-(proj-|ant-|live-|test-)?[A-Za-z0-9_-]{24,}'
+  # AWS access key id
+  'AKIA[0-9A-Z]{16}'
+  # Slack tokens and webhooks
+  'xox[abposr]-[A-Za-z0-9-]{10,}'
+  'hooks\.slack\.com/services/T[A-Za-z0-9_/]{20,}'
+  # PEM private key headers
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  # Fernet / symmetric key assignments
+  'ENCRYPTION_KEY[[:space:]]*[:=][[:space:]]*[A-Za-z0-9+/]{40,}={0,2}'
+  # Generic credential assignment with a long literal value. Quoted values may
+  # contain dots; unquoted ones may not, which is what keeps code such as
+  # `api_key=self._credential` out of the results.
+  '(api[_-]?key|apikey|access[_-]?token|auth[_-]?token|client[_-]?secret|secret[_-]?key|password|passwd)[[:space:]]*[:=][[:space:]]*("[A-Za-z0-9_.+/=-]{16,}"|'"'"'[A-Za-z0-9_.+/=-]{16,}'"'"'|[A-Za-z0-9_/+=-]{16,})'
+)
+
+# Lines carrying one of these markers are treated as deliberate placeholders and
+# are not reported. Also doubles as the inline allowlist.
+ALLOW_MARKER_RE='secret-scan:allow|pragma:[[:space:]]*allowlist secret|gitleaks:allow'
+ALLOW_MARKER_RE+='|placeholder|your[_-]|change[_-]?me|example|dummy|redacted|sample|fake'
+ALLOW_MARKER_RE+='|\*\*\*|<[A-Za-z0-9_-]+>|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|%[sdv]|\.\.\.|xxx'
+
+# Generated output, vendored dependencies and binaries are not worth scanning.
+SKIP_PATH_RE='(^|/)(\.venv|venv|node_modules|dist|build|reports|\.pytest_cache|\.ruff_cache|\.mypy_cache|\.tox)/'
+SKIP_PATH_RE+='|\.(png|jpe?g|gif|ico|svg|webp|woff2?|ttf|eot|pdf|zip|gz|tgz|whl|jar|lock)$'
+
+# Credential files must never be added by a push, whatever their content.
+FORBIDDEN_BASENAME_RE='^(id_(rsa|dsa|ecdsa|ed25519)|\.pypirc|\.encryption_key|\.netrc|\.npmrc|\.pgpass)$'
+FORBIDDEN_SUFFIX_RE='\.(pem|key|p12|pfx|keystore|jks|kdbx)$'
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  RED=$'\033[31m'; BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
+else
+  RED=""; BOLD=""; DIM=""; RESET=""
+fi
+
+build_regex() {
+  local IFS='|'
+  printf '%s' "${PATTERNS[*]}"
+}
+
+REGEX="$(build_regex)"
+
+# A .env file is a credential file; .env.example / .env.sample / .env.template
+# are documentation and are expected to hold placeholders.
+is_forbidden_path() {
+  local file="$1" base="${1##*/}"
+  case "$base" in
+    .env.example|.env.sample|.env.template|.env.dist|*.example) return 1 ;;
+    .env|.env.*) return 0 ;;
+  esac
+  [[ "$base" =~ $FORBIDDEN_BASENAME_RE ]] && return 0
+  [[ "$base" =~ $FORBIDDEN_SUFFIX_RE ]] && return 0
+  return 1
+}
+
+FAIL=0
+REPORTED=0
+
+report() {
+  local sha="$1" file="$2" hits="$3"
+  FAIL=1
+  REPORTED=$((REPORTED + 1))
+  echo ""
+  echo "${RED}${BOLD}✗ ${file}${RESET} ${DIM}(${sha:0:8})${RESET}"
+  printf '%s\n' "$hits" | head -20 | sed 's/^/    /'
+}
+
+scan_commit() {
+  local sha="$1" file base hits
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    [[ "$file" =~ $SKIP_PATH_RE ]] && continue
+
+    if is_forbidden_path "$file"; then
+      report "$sha" "$file" "credential file must not be committed"
+      continue
+    fi
+
+    hits=$(git diff-tree -p --root --no-commit-id --no-color -U0 "$sha" -- "$file" 2>/dev/null \
+      | grep -E '^\+' \
+      | grep -vE '^\+\+\+' \
+      | grep -Eiv "$ALLOW_MARKER_RE" \
+      | grep -Ei -- "$REGEX" \
+      || true)
+    [ -n "$hits" ] && report "$sha" "$file" "$hits"
+  done < <(git diff-tree -r --root --no-commit-id --name-only --diff-filter=ACMR "$sha" 2>/dev/null)
+}
+
+# Commits reachable from the pushed tip but from no remote ref: the right range
+# for a new branch, where the remote side has no previous SHA to diff against.
+commits_not_on_any_remote() {
+  git rev-list "$1" --not --remotes 2>/dev/null
+}
+
+collect_commits() {
+  local local_sha="$1" remote_sha="$2" local_commit remote_commit commits
+  # The pushed tip may be an annotated tag rather than a commit; peel it.
+  local_commit="$(git rev-parse --verify --quiet "${local_sha}^{commit}" 2>/dev/null)"
+  [ -n "$local_commit" ] || return 0
+
+  remote_commit=""
+  if [ "$remote_sha" != "$ZERO" ]; then
+    remote_commit="$(git rev-parse --verify --quiet "${remote_sha}^{commit}" 2>/dev/null)"
+  fi
+
+  if [ -z "$remote_commit" ]; then
+    commits="$(commits_not_on_any_remote "$local_commit")"
+    # No remote refs at all (fresh clone of a fresh repo): scan the tip only.
+    [ -n "$commits" ] || commits="$(git rev-list --max-count=1 "$local_commit" 2>/dev/null)"
+  else
+    commits="$(git rev-list "${remote_commit}..${local_commit}" 2>/dev/null)"
+  fi
+  printf '%s\n' "$commits"
+}
+
+scan_range() {
+  local sha
+  while IFS= read -r sha; do
+    [ -n "$sha" ] || continue
+    scan_commit "$sha"
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Main: git feeds "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
+# ---------------------------------------------------------------------------
+if [ "${ALLOW_SECRETS:-}" = "1" ]; then
+  echo "secret-scan: skipped (ALLOW_SECRETS=1)." >&2
+  exit 0
+fi
+
+INPUT="$(cat 2>/dev/null || true)"
+
+if [ -z "$(printf '%s' "$INPUT" | tr -d '[:space:]')" ]; then
+  # No ref list (e.g. invoked by the pre-commit framework, or `git push` with an
+  # unusual transport). Fail closed: scan everything the current branch is
+  # going to publish.
+  scan_range < <(git rev-list HEAD --not --remotes 2>/dev/null || git rev-list HEAD 2>/dev/null)
+else
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -n "${local_sha:-}" ] || continue
+    # Ref deletion: nothing is being published.
+    [ "$local_sha" = "$ZERO" ] && continue
+    scan_range < <(collect_commits "$local_sha" "${remote_sha:-$ZERO}")
+  done <<< "$INPUT"
+fi
+
+if [ "$FAIL" -eq 1 ]; then
+  cat >&2 <<EOF
+
+${RED}${BOLD}Push blocked: ${REPORTED} file(s) contain secret-like content.${RESET}
+
+No data left your machine. Fix the finding before pushing:
+
+  1. Remove the value and load it from the environment instead.
+  2. If it was a real credential, rotate it — it is already in local history.
+  3. If this is a false positive, append  # secret-scan:allow  to the line,
+     or set ALLOW_SECRETS=1 for a one-off push (logs the skip, still risky).
+     \`git push --no-verify\` bypasses this hook entirely — CI still scans.
+EOF
+  exit 1
+fi
+
+exit 0
