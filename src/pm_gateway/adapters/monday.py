@@ -255,8 +255,12 @@ class MondayProvider:
             "Accept": "application/json",
         }
         version = os.getenv("PM_GATEWAY_MONDAY_API_VERSION", "").strip()
-        if version:
-            headers["API-Version"] = version
+        if not version:
+            # monday.com's items_page cursor pagination and several board
+            # fields require a recent API version; the endpoint default is too
+            # old for the queries this adapter issues.
+            version = "2024-01"
+        headers["API-Version"] = version
         return headers
 
     async def _request(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
@@ -274,8 +278,19 @@ class MondayProvider:
             ) from exc
 
         if response.status_code >= 400:
+            detail = ""
+            try:
+                payload = response.json()
+                if isinstance(payload, dict) and payload.get("errors"):
+                    detail = str((payload["errors"][0] or {}).get("message") or "")
+                elif isinstance(payload, dict) and payload.get("error_message"):
+                    detail = str(payload.get("error_message"))
+            except (ValueError, AttributeError):
+                detail = response.text[:200].strip()
+            if not detail:
+                detail = response.text[:200].strip()
             raise MondayAPIError(
-                "The monday.com request failed.",
+                f"The monday.com request failed: {self._sanitize(detail)}",
                 status_code=response.status_code,
             )
         try:
