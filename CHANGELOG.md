@@ -6,6 +6,12 @@ versioned separately in the OpenAPI document.
 
 ## [Unreleased]
 
+## [0.1.0a4] - 2026-11-12
+
+### Fixed
+
+- monday.com adapter: default to a recent `API-Version` and surface response bodies on HTTP errors.
+
 ## [0.1.0a3] - 2026-11-12
 
 ### Added
