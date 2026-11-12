@@ -1,0 +1,63 @@
+{
+  "providers": {
+    "jira": {
+      "status": "available",
+      "url": "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
+      "filename": "jira-openapi.json",
+      "sha256": "99d9ae7bc603ef81921948689d2502c85eff1a76d9ce5f2c14bfa74cea904f3b"
+    },
+    "confluence": {
+      "status": "available",
+      "url": "https://developer.atlassian.com/cloud/confluence/swagger.v3.json",
+      "filename": "confluence-openapi.json",
+      "sha256": "f80279e4beace901a20174044ff3dc1cf047ea9486c3dd6eff57e33e4161bf12"
+    },
+    "trello": {
+      "status": "available",
+      "url": "https://developer.atlassian.com/cloud/trello/swagger.v3.json",
+      "filename": "trello-openapi.json",
+      "sha256": "b07c97d06e93f7caff661a307e86f2b58c1f97591614ac8179f8e31bda27334b"
+    },
+    "plane": {
+      "status": "unavailable",
+      "url": "https://developers.plane.so/api-reference/introduction",
+      "reason": "self-hosted only: GET /api/schema/?format=openapi-json on your Plane instance"
+    },
+    "planner": {
+      "status": "available",
+      "url": "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml",
+      "filename": "msgraph-v1.0-openapi.yaml",
+      "sha256": "eed44b45dd36f8489aabdffedd9de6e2f4e7613c1c7b2d884845e59652d489ff"
+    },
+    "asana": {
+      "status": "available",
+      "url": "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml",
+      "filename": "asana-openapi.yaml",
+      "sha256": "bb9128f33708de453e1443c3631df21428b21a458c12b9587597566e9761620a"
+    },
+    "clickup": {
+      "status": "available",
+      "url": "https://developer.clickup.com/openapi/clickup-api-v2-reference.json",
+      "filename": "clickup-api-v2-openapi.json",
+      "sha256": "a0a72ec97ddb4e4859b9ed89b997bb784ba5828412ff35119f41e87103069662"
+    },
+    "notion": {
+      "status": "available",
+      "url": "https://raw.githubusercontent.com/makenotion/notion-mcp-server/main/scripts/notion-openapi.json",
+      "filename": "notion-openapi.json",
+      "sha256": "d33548174dfc6ebad012fc73b1483532c7887d8c97fd6deb62d56c742e96baba"
+    },
+    "basecamp": {
+      "status": "available",
+      "url": "https://raw.githubusercontent.com/basecamp/basecamp-sdk/main/openapi.json",
+      "filename": "basecamp-openapi.json",
+      "sha256": "ed54d6a8f2ba2bf5c0f52430a20c8b0104b9790f8e3cdf979c96d7b2f61d3102"
+    },
+    "github": {
+      "status": "available",
+      "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
+      "filename": "github-api.github.com-openapi.json",
+      "sha256": "3e056802680135531a5b8b6c8b3fd35e4e0c9705a6130e128c655e01ed9a8d1e"
+    }
+  }
+}

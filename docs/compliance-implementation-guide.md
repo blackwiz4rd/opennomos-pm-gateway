@@ -25,7 +25,7 @@ The gateway has two ways to support a PM tool:
 
 | Mode | Who translates | When to use |
 |---|---|---|
-| Native adapter (`plane`, `jira`, `planner`, `monday`) | The gateway maps the vendor API into the standard model. | The tool has its own API and you want the gateway to adapt it. |
+| Native adapter (`plane`, `jira`, `planner`, `monday`, `asana`) | The gateway maps the vendor API into the standard model. | The tool has its own API and you want the gateway to adapt it. |
 | `compliant` provider | The tool itself implements the standard API. The gateway only routes requests, injects the bearer token, and parses responses into its models. | You control the tool and can expose `/pm/v1` directly. |
 
 In `compliant` mode the gateway:
@@ -1347,7 +1347,7 @@ when the spec version changes.
 5. **`ETag` is optional.** If you do not emit it, conditional updates are not
    tested. If you do emit it, enforce `If-Match`.
 6. **`compliant` is not in the spec's `X-PM-Provider` enum.** The enum lists
-   `plane`, `jira`, `planner`, and `monday`, but the gateway accepts
+   `plane`, `jira`, `planner`, `monday`, and `asana`, but the gateway accepts
    `compliant`. When generating a client, send the header as a plain string or
    extend the enum in the generated client. A compliant upstream never receives
    this header from the gateway.

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pm_gateway.adapters.normalization import build_work_item_url, normalize_state_category
-from pm_gateway.security import safe_url
+from pm_gateway.adapters.normalization import (
+    build_work_item_url,
+    normalize_state_category,
+)
 from pm_gateway.generated.models.container import Container
 from pm_gateway.generated.models.container_ref import ContainerRef
 from pm_gateway.generated.models.estimate_value import EstimateValue
@@ -20,6 +22,7 @@ from pm_gateway.generated.models.work_item_lifecycle import WorkItemLifecycle
 from pm_gateway.generated.models.work_item_ref import WorkItemRef
 from pm_gateway.generated.models.work_item_relationship import WorkItemRelationship
 from pm_gateway.generated.models.workflow_state_ref import WorkflowStateRef
+from pm_gateway.security import safe_url
 
 _PRIORITY_LEVELS = {
     "urgent": "highest",
@@ -211,6 +214,11 @@ def as_work_item(
         "planner": "task",
         "plane": "work-item",
         "monday": "item",
+        "asana": "task",
+        "clickup": "task",
+        "trello": "card",
+        "basecamp": "todo",
+        "github": "issue",
     }[provider]
     url_base = base_url
     if provider == "plane" and not url_base:
@@ -226,6 +234,12 @@ def as_work_item(
         extra["teamId"] = raw["team_id"]
     if raw.get("team_name"):
         extra["teamName"] = raw["team_name"]
+    memberships = raw.get("memberships") or []
+    if len(memberships) > 1:
+        # Providers whose work items can live in several containers at once
+        # (Asana tasks in multiple projects) keep the full list here so the
+        # single ``memberships`` entry below does not hide the rest.
+        extra["memberships"] = memberships
     if extra:
         extensions[f"{provider}:native"] = extra
 

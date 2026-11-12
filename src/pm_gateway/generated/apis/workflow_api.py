@@ -22,14 +22,14 @@ from fastapi import (  # noqa: F401
     status,
 )
 
-from pm_gateway.generated.models.extra_models import TokenModel  # noqa: F401
-from pydantic import Field, StrictStr, field_validator
+from pydantic import Field, field_validator
 from typing import Optional
 from typing_extensions import Annotated
 from pm_gateway.generated.models.api_error import ApiError
 from pm_gateway.generated.models.transition_request import TransitionRequest
 from pm_gateway.generated.models.work_item import WorkItem
 from pm_gateway.generated.models.workflow_state_page import WorkflowStatePage
+from pm_gateway.generated.models.extra_models import TokenModel  # noqa: F401
 from pm_gateway.generated.security_api import get_token_bearerAuth
 
 router = APIRouter()
@@ -53,19 +53,20 @@ for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
     response_model_by_alias=True,
 )
 async def list_workflow_states(
-    workspaceId: StrictStr = Path(..., description=""),
-    containerId: StrictStr = Path(..., description=""),
-    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    board_id: Annotated[Optional[StrictStr], Field(description="Optional provider-native board ID used to scope workflow states.")] = Query(None, description="Optional provider-native board ID used to scope workflow states.", alias="boardId"),
-    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, and monday.com use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, and monday.com use their documented defaults."),
+    workspaceId: str = Path(..., description=""),
+    containerId: str = Path(..., description=""),
+    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    board_id: Annotated[Optional[str], Field(description="Optional provider-native board ID used to scope workflow states.")] = Query(None, description="Optional provider-native board ID used to scope workflow states.", alias="boardId"),
+    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
 ) -> WorkflowStatePage:
     if not BaseWorkflowApi.subclasses:
         raise HTTPException(status_code=500, detail="Not implemented")
-    return await BaseWorkflowApi.subclasses[0]().list_workflow_states(workspaceId, containerId, x_pm_provider, x_pm_provider_credential, board_id, x_pm_provider_base_url)
+    return await BaseWorkflowApi.subclasses[0]().list_workflow_states(workspaceId, containerId, x_pm_provider, x_pm_provider_credential, board_id, x_pm_provider_base_url, x_pm_provider_mode)
 
 
 @router.post(
@@ -87,14 +88,15 @@ async def list_workflow_states(
     response_model_by_alias=True,
 )
 async def transition_work_item(
-    workspaceId: StrictStr = Path(..., description=""),
-    workItemId: StrictStr = Path(..., description=""),
-    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    transition_request: Optional[TransitionRequest] = Body(None, description=""),
-    container_id: Annotated[Optional[StrictStr], Field(description="Optional native container context required by some providers to retrieve a work item. OpenNomos should provide it when known.")] = Query(None, description="Optional native container context required by some providers to retrieve a work item. OpenNomos should provide it when known.", alias="containerId"),
-    if_match: Annotated[Optional[StrictStr], Field(description="Opaque revision token, when supported.")] = Header(None, description="Opaque revision token, when supported."),
-    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, and monday.com use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, and monday.com use their documented defaults."),
+    workspaceId: str = Path(..., description=""),
+    workItemId: str = Path(..., description=""),
+    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    transition_request: Optional[TransitionRequest] = Body(..., description=""),
+    container_id: Annotated[Optional[str], Field(description="Optional native container context required by some providers to retrieve a work item. OpenNomos should provide it when known.")] = Query(None, description="Optional native container context required by some providers to retrieve a work item. OpenNomos should provide it when known.", alias="containerId"),
+    if_match: Annotated[Optional[str], Field(description="Opaque revision token, when supported.")] = Header(None, description="Opaque revision token, when supported."),
+    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -102,4 +104,4 @@ async def transition_work_item(
     """Optional capability. The provider validates that the requested transition is allowed in the current workflow. A provider may expose available transitions in the workflow-state representation."""
     if not BaseWorkflowApi.subclasses:
         raise HTTPException(status_code=500, detail="Not implemented")
-    return await BaseWorkflowApi.subclasses[0]().transition_work_item(workspaceId, workItemId, x_pm_provider, x_pm_provider_credential, transition_request, container_id, if_match, x_pm_provider_base_url)
+    return await BaseWorkflowApi.subclasses[0]().transition_work_item(workspaceId, workItemId, x_pm_provider, x_pm_provider_credential, transition_request, container_id, if_match, x_pm_provider_base_url, x_pm_provider_mode)

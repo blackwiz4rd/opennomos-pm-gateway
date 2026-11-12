@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -23,7 +23,7 @@ _PROVIDER = {"key": "compliant", "productName": "Remote"}
 
 def _fake_open_provider(adapter: CompliantProvider):
     @asynccontextmanager
-    async def open_provider(provider, credential, base_url):
+    async def open_provider(provider, credential, base_url, *, mode=None):
         assert provider == "compliant"
         yield adapter
 
@@ -135,7 +135,7 @@ async def test_compliant_list_work_items_forwards_filters_and_preserves_payload(
         "https://remote.example",
         transport=httpx.MockTransport(handler),
     )
-    changed_since = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    changed_since = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 
     result = await _dispatch_compliant(
         "list_work_items",

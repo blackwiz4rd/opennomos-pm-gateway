@@ -28,6 +28,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: getCapabilities
@@ -51,6 +52,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
       - $ref: '#/components/parameters/ConfiguredWorkspaceSlugs'
     get:
       tags: [Discovery]
@@ -80,6 +82,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: listContainers
@@ -116,6 +119,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: listBoards
@@ -149,6 +153,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Work items]
       operationId: listWorkItems
@@ -245,6 +250,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: getBoardScope
@@ -286,6 +292,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Work items]
       operationId: getWorkItem
@@ -379,6 +386,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Workflow]
       operationId: listWorkflowStates
@@ -412,6 +420,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     post:
       tags: [Workflow]
       operationId: transitionWorkItem
@@ -467,6 +476,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: listCustomFieldDefinitions
@@ -503,6 +513,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: listIterations
@@ -541,6 +552,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Discovery]
       operationId: listMilestones
@@ -574,6 +586,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Work items]
       operationId: listWorkItemComments
@@ -607,6 +620,7 @@ paths:
       - $ref: '#/components/parameters/Provider'
       - $ref: '#/components/parameters/ProviderCredential'
       - $ref: '#/components/parameters/ProviderBaseUrl'
+      - $ref: '#/components/parameters/ProviderMode'
     get:
       tags: [Work items]
       operationId: listWorkItemAttachments
@@ -648,16 +662,16 @@ components:
       description: Adapter key selected by OpenNomos.
       schema:
         type: string
-        enum: [plane, jira, planner, monday]
+        enum: [plane, jira, planner, monday, asana]
     ProviderCredential:
       name: X-PM-Provider-Credential
       in: header
       required: true
       description: >-
         Provider credential value held by OpenNomos and forwarded for this
-        request only. Plane/Jira/monday.com use their API token form; Planner
-        uses tenant_id:client_id:client_secret. Gateways and intermediaries
-        must not persist or log this header. TLS is required.
+        request only. Plane/Jira/monday.com/Asana use their API token form;
+        Planner uses tenant_id:client_id:client_secret. Gateways and
+        intermediaries must not persist or log this header. TLS is required.
       schema:
         type: string
         format: password
@@ -669,11 +683,23 @@ components:
       required: false
       description: >-
         Optional provider API base URL from the OpenNomos credential record.
-        Jira requires it; Plane, Planner, and monday.com use their documented
-        defaults.
+        Jira requires it; Plane, Planner, monday.com, and Asana use their
+        documented defaults.
       schema:
         type: string
         format: uri
+    ProviderMode:
+      name: X-PM-Provider-Mode
+      in: header
+      required: false
+      description: >-
+        Optional provider implementation mode. Used by providers with more than
+        one backend (for example Jira's `sdk` and `http-client` modes).
+        Defaults to `http-client`.
+      schema:
+        type: string
+        enum: [sdk, http-client]
+        default: http-client
     ConfiguredWorkspaceSlugs:
       name: X-PM-Workspace-Slugs
       in: header

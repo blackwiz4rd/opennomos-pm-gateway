@@ -35,7 +35,19 @@ class Provider(str, Enum):
     JIRA = "jira"
     PLANNER = "planner"
     MONDAY = "monday"
+    ASANA = "asana"
+    CLICKUP = "clickup"
+    TRELLO = "trello"
+    BASECAMP = "basecamp"
+    GITHUB = "github"
     COMPLIANT = "compliant"
+
+
+class ProviderMode(str, Enum):
+    """Jira backend mode selection."""
+
+    HTTP = "http-client"
+    SDK = "sdk"
 
 
 class PMGateway:
@@ -55,6 +67,7 @@ class PMGateway:
         provider: Provider,
         credential: str,
         base_url: str | None = None,
+        mode: ProviderMode | None = None,
         **params: Any,
     ) -> Any:
         """Execute a generated API operation directly against its adapter."""
@@ -63,8 +76,9 @@ class PMGateway:
             provider=provider.value,
             credential=credential,
             base_url=base_url,
+            mode=mode,
             **params,
         )
 
 
-__all__ = ["Operation", "PMGateway", "Provider"]
+__all__ = ["Operation", "PMGateway", "Provider", "ProviderMode"]

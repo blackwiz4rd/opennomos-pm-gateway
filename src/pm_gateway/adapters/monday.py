@@ -205,8 +205,7 @@ class MondayProvider:
         self._base_url = (base_url or DEFAULT_BASE_URL).strip().rstrip("/")
         # Accept both the API root and an already-qualified GraphQL endpoint so
         # callers can point at monday.com or a compatible proxy.
-        if self._base_url.endswith(GRAPHQL_PATH):
-            self._base_url = self._base_url[: -len(GRAPHQL_PATH)]
+        self._base_url = self._base_url.removesuffix(GRAPHQL_PATH)
         self._endpoint = f"{self._base_url}{GRAPHQL_PATH}"
         self._transport = transport
         self._client: httpx.AsyncClient | None = None

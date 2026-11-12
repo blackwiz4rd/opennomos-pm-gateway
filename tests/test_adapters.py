@@ -145,7 +145,7 @@ async def test_generated_list_work_items_routes_to_selected_provider(
             ]
 
     @asynccontextmanager
-    async def fake_open_provider(provider, credential, base_url):
+    async def fake_open_provider(provider, credential, base_url, *, mode=None):
         assert provider == "plane"
         assert credential == "ephemeral-upstream-secret"
         assert base_url is None

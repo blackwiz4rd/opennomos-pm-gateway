@@ -14,6 +14,35 @@ versioned separately in the OpenAPI document.
   work-item fields and custom fields. Reads paginate through `items_page`,
   transitions move items between groups, and `api.monday.com` is allowlisted by
   default.
+- Asana provider adapter (`Provider.ASANA` / `X-PM-Provider: asana`).
+  Uses the Asana REST API with a personal access token; projects map to
+  containers, project sections to workflow states, and task custom fields to
+  normalized custom fields. Reads paginate through `next_page.offset`,
+  transitions move tasks between sections, multi-project memberships are
+  preserved, and `app.asana.com` is allowlisted by default.
+- Live Asana compatibility suite (`tests/live/test_asana_live.py`) gated on
+  `ASANA_LIVE=1`, with an opt-in create/move/delete lifecycle on a disposable
+  project and a generated compatibility report (`reports/asana-live/`). CI runs
+  it when the `ASANA_API_TOKEN` secret is present and publishes the report as an
+  artifact and workflow summary.
+- ClickUp provider adapter (`Provider.CLICKUP` / `X-PM-Provider: clickup`).
+  Uses the ClickUp REST API v2 with a personal API token; Lists map to
+  containers, List statuses to workflow states, and task custom fields to
+  normalized custom fields. Reads paginate through the `last_page` flag,
+  transitions move tasks between statuses, and `api.clickup.com` is allowlisted
+  by default.
+- Trello provider adapter (`Provider.TRELLO` / `X-PM-Provider: trello`).
+- Basecamp provider adapter (`Provider.BASECAMP` / `X-PM-Provider: basecamp`).
+- GitHub Issues provider adapter (`Provider.GITHUB` / `X-PM-Provider: github`).
+- Jira HTTP mode (`X-PM-Provider-Mode: http-client`, now the default) backed by
+  the generated Jira OpenAPI client, alongside the existing `sdk` mode.
+- `scripts/generate-provider-clients.sh`, which generates filtered provider HTTP
+  clients from downloaded OpenAPI documents.
+- Provider spec freshness test (`tests/test_provider_spec_freshness.py`, live).
+- `scripts/download-provider-specs.sh`, which downloads the OpenAPI documents
+  that PM providers publish for their own APIs into one directory for reference
+  during adapter work. It never invokes OpenAPI Generator; generated gateway code
+  still comes only from `spec/pm-api-openapi-v0.1.yaml`.
 - Live monday.com compatibility suite (`tests/live/`) gated on `MONDAY_LIVE=1`,
   with an opt-in create/move/delete lifecycle on a disposable board and a
   generated compatibility report (`reports/monday-live/`). CI runs it when the
@@ -39,8 +68,11 @@ versioned separately in the OpenAPI document.
   `./scripts/install-hooks.sh`, also usable as a `pre-commit` pre-push stage).
   Blocks pushes whose commits add credential files (`.env`, `*.pem`, `id_rsa`, …)
   or provider token patterns for monday.com, Plane, GitHub, Atlassian, AWS,
-  OpenAI, and Slack. Scoped to the pushed range, overridable per push with
-  `ALLOW_SECRETS=1`, and allowlistable per line with `# secret-scan:allow`.
+  OpenAI, and Slack. Asana personal access tokens have no distinguishing prefix,
+  so provider-prefixed assignments such as `ASANA_API_TOKEN=...` are covered by
+  the generic credential-assignment rule. Scoped to the pushed range, overridable
+  per push with `ALLOW_SECRETS=1`, and allowlistable per line with
+  `# secret-scan:allow`.
 - CI `secret-scan` job runs gitleaks over the pushed range with a pinned,
   checksum-verified binary; publishing a release now depends on it.
 

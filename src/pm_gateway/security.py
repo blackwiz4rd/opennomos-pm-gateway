@@ -35,6 +35,11 @@ _DEFAULT_ALLOWED_HOSTS = {
     "plane": ("api.plane.so",),
     "planner": tuple(PLANNER_GRAPH_HOSTS),
     "monday": ("api.monday.com",),
+    "asana": ("app.asana.com",),
+    "clickup": ("api.clickup.com",),
+    "trello": ("api.trello.com",),
+    "basecamp": ("3.basecampapi.com", "basecampapi.com"),
+    "github": ("api.github.com",),
     "compliant": (),
 }
 
@@ -194,7 +199,7 @@ async def validate_provider_destination(provider: str, base_url: str | None) -> 
             ),
             timeout=_DNS_TIMEOUT_SECONDS,
         )
-    except (OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, OSError) as exc:
         raise ValueError("Provider base URL host could not be resolved.") from exc
 
     addresses = {info[4][0] for info in infos if info[4]}
@@ -245,7 +250,7 @@ def validate_native_identifiers(provider: str, params: Mapping[str, Any]) -> Non
         for value in values:
             validate_native_id(value, "iteration_ids")
 
-    if provider in {"plane", "planner", "monday"}:
+    if provider in {"plane", "planner", "monday", "asana", "clickup", "trello", "basecamp", "github"}:
         workspace_id = params.get("workspaceId", params.get("workspace_id"))
         if workspace_id is not None:
             validate_native_id(workspace_id, "workspaceId")

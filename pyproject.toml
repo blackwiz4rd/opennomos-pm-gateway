@@ -19,6 +19,7 @@ keywords = [
     "jira",
     "plane",
     "monday",
+    "asana",
     "microsoft-planner",
     "openapi",
     "sdk",
@@ -38,6 +39,7 @@ classifiers = [
 dependencies = [
     "fastapi>=0.115.0,<1.0.0",
     "httpx>=0.28.0,<1.0.0",
+    "python-dateutil>=2.8.2",
     "jira>=3.10.5,<4.0.0",
     "msal>=1.24.0,<2.0.0",
     "plane-sdk>=0.2.13,<1.0.0",

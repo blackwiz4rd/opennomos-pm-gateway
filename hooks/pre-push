@@ -27,6 +27,8 @@ PATTERNS=(
   'eyJ0aWQiO[A-Za-z0-9_.-]{10,}'
   # Plane API key
   'plane_api_[a-f0-9]{20,}'
+  # Asana personal access tokens are opaque (no fixed prefix); the generic
+  # credential-assignment rule below covers them.
   # GitHub tokens and fine-grained PATs
   'gh[pousr]_[A-Za-z0-9]{36,}'
   'github_pat_[A-Za-z0-9_]{40,}'
@@ -45,8 +47,10 @@ PATTERNS=(
   'ENCRYPTION_KEY[[:space:]]*[:=][[:space:]]*[A-Za-z0-9+/]{40,}={0,2}'
   # Generic credential assignment with a long literal value. Quoted values may
   # contain dots; unquoted ones may not, which is what keeps code such as
-  # `api_key=self._credential` out of the results.
-  '(api[_-]?key|apikey|access[_-]?token|auth[_-]?token|client[_-]?secret|secret[_-]?key|password|passwd)[[:space:]]*[:=][[:space:]]*("[A-Za-z0-9_.+/=-]{16,}"|'"'"'[A-Za-z0-9_.+/=-]{16,}'"'"'|[A-Za-z0-9_/+=-]{16,})'
+  # `api_key=self._credential` out of the results. The key alternation is
+  # deliberately unanchored so provider-prefixed names such as
+  # `ASANA_API_TOKEN` are covered too.
+  '(api[_-]?key|apikey|api[_-]?token|access[_-]?token|auth[_-]?token|client[_-]?secret|secret[_-]?key|password|passwd)[[:space:]]*[:=][[:space:]]*("[A-Za-z0-9_.+/=-]{16,}"|'"'"'[A-Za-z0-9_.+/=-]{16,}'"'"'|[A-Za-z0-9_/+=-]{16,})'
 )
 
 # Lines carrying one of these markers are treated as deliberate placeholders and

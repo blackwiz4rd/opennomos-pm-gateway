@@ -4,16 +4,25 @@ import base64
 import binascii
 import inspect
 import logging
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from pm_gateway.adapters.factory import normalize_provider, open_provider, validate_provider_context
+from pm_gateway.adapters.factory import (
+    normalize_provider,
+    open_provider,
+    validate_provider_context,
+)
 from pm_gateway.adapters.normalization import normalize_state_category
-from pm_gateway.adapters.serialization import as_board, as_container, as_iteration, as_work_item
+from pm_gateway.adapters.serialization import (
+    as_board,
+    as_container,
+    as_iteration,
+    as_work_item,
+)
 from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
 from pm_gateway.generated.apis.work_items_api_base import BaseWorkItemsApi
 from pm_gateway.generated.apis.workflow_api_base import BaseWorkflowApi
@@ -22,18 +31,20 @@ from pm_gateway.generated.models.board_scope import BoardScope
 from pm_gateway.generated.models.capabilities import Capabilities
 from pm_gateway.generated.models.comment_page import CommentPage
 from pm_gateway.generated.models.container_page import ContainerPage
-from pm_gateway.generated.models.custom_field_definition_page import CustomFieldDefinitionPage
+from pm_gateway.generated.models.custom_field_definition_page import (
+    CustomFieldDefinitionPage,
+)
 from pm_gateway.generated.models.feature_capability import FeatureCapability
 from pm_gateway.generated.models.iteration_page import IterationPage
 from pm_gateway.generated.models.mapping_metadata import MappingMetadata
 from pm_gateway.generated.models.milestone_page import MilestonePage
 from pm_gateway.generated.models.provider_ref import ProviderRef
+from pm_gateway.generated.models.work_item import WorkItem
+from pm_gateway.generated.models.work_item_page import WorkItemPage
 from pm_gateway.generated.models.workflow_state import WorkflowState
 from pm_gateway.generated.models.workflow_state_page import WorkflowStatePage
 from pm_gateway.generated.models.workspace import Workspace
 from pm_gateway.generated.models.workspace_page import WorkspacePage
-from pm_gateway.generated.models.work_item import WorkItem
-from pm_gateway.generated.models.work_item_page import WorkItemPage
 from pm_gateway.security import path_segment, validate_native_identifiers
 
 logger = logging.getLogger("pm_gateway.adapters")
@@ -71,6 +82,11 @@ _PROVIDER_NAMES = {
     "jira": "Jira",
     "planner": "Microsoft Planner",
     "monday": "monday.com",
+    "asana": "Asana",
+    "clickup": "ClickUp",
+    "trello": "Trello",
+    "basecamp": "Basecamp",
+    "github": "GitHub",
 }
 
 
@@ -116,11 +132,14 @@ def _provider_ref(provider: str) -> ProviderRef:
 def _features(provider: str) -> list[FeatureCapability]:
     supports_boards = provider in {"jira", "planner"}
     supports_iterations = provider == "jira"
-    return [
+    # Asana's workflow states are project sections, so transitions move a task
+    # between sections rather than through a board.
+    supports_transitions = provider in {"plane", "jira", "planner", "monday", "asana", "clickup", "trello", "basecamp", "github"}
+    features = [
         FeatureCapability(name="workspaces.list", supported=True, scope="workspace"),
         FeatureCapability(name="containers.list", supported=True, scope="workspace"),
         FeatureCapability(name="work-items.read", supported=True, scope="container"),
-        FeatureCapability(name="work-items.transition", supported=True, scope="work-item"),
+        FeatureCapability(name="work-items.transition", supported=supports_transitions, scope="work-item"),
         FeatureCapability(name="work-items.update", supported=False, scope="work-item"),
         FeatureCapability(name="workflow-states.list", supported=True, scope="container"),
         FeatureCapability(name="boards.list", supported=supports_boards, scope="container"),
@@ -133,6 +152,16 @@ def _features(provider: str) -> list[FeatureCapability]:
         FeatureCapability(name="work-items.deleted-filter", supported=False, scope="container"),
         FeatureCapability(name="work-items.archived-filter", supported=False, scope="container"),
     ]
+    if provider == "jira":
+        features.append(
+            FeatureCapability(
+                name="provider.mode",
+                supported=True,
+                scope="connection",
+                constraints={"modes": ["sdk", "http-client"], "default": "http-client"},
+            )
+        )
+    return features
 
 
 def _filter_work_items(items: list[Any], params: dict[str, Any]) -> list[Any]:
@@ -150,13 +179,13 @@ def _filter_work_items(items: list[Any], params: dict[str, Any]) -> list[Any]:
     changed_since = params.get("changed_since")
     if changed_since:
         if changed_since.tzinfo is None:
-            changed_since = changed_since.replace(tzinfo=timezone.utc)
+            changed_since = changed_since.replace(tzinfo=UTC)
         def was_changed_since(item):
             updated_at = item.dates.updated_at if item.dates else None
             if updated_at is None:
                 return False
             if updated_at.tzinfo is None:
-                updated_at = updated_at.replace(tzinfo=timezone.utc)
+                updated_at = updated_at.replace(tzinfo=UTC)
             return updated_at >= changed_since
 
         items = [item for item in items if was_changed_since(item)]
@@ -175,7 +204,7 @@ def _filter_work_items(items: list[Any], params: dict[str, Any]) -> list[Any]:
 
         def timestamp(value):
             if value is not None and value.tzinfo is None:
-                return value.replace(tzinfo=timezone.utc)
+                return value.replace(tzinfo=UTC)
             return value
 
         accessors = {
@@ -203,9 +232,10 @@ async def _run(operation: str, args: tuple, kwargs: dict):
     params["x_pm_provider"] = provider
     credential = params.get("x_pm_provider_credential")
     base_url = params.get("x_pm_provider_base_url")
+    provider_mode = params.get("x_pm_provider_mode") or "http-client"
 
     try:
-        return await _dispatch(operation, params, provider, credential, base_url)
+        return await _dispatch(operation, params, provider, credential, base_url, provider_mode)
     except HTTPException:
         raise
     except ValueError as exc:
@@ -444,14 +474,14 @@ async def _dispatch_compliant(operation: str, params: dict[str, Any], adapter: A
     raise HTTPException(status_code=501, detail=f"Unknown operation: {operation}")
 
 
-async def _dispatch(operation: str, params: dict[str, Any], provider: str, credential: str, base_url: str | None):
+async def _dispatch(operation: str, params: dict[str, Any], provider: str, credential: str, base_url: str | None, provider_mode: str = "http-client"):
     provider = normalize_provider(provider)
     params["x_pm_provider"] = provider
     validate_provider_context(provider, credential, base_url)
     if provider != "compliant":
         validate_native_identifiers(provider, params)
     if provider == "compliant":
-        async with open_provider(provider, credential, base_url) as adapter:
+        async with open_provider(provider, credential, base_url, mode=provider_mode) as adapter:
             return await _dispatch_compliant(operation, params, adapter)
     workspace_id = params.get("workspaceId")
     container_id = params.get("containerId") or params.get("container_id")
@@ -474,7 +504,7 @@ async def _dispatch(operation: str, params: dict[str, Any], provider: str, crede
         page, next_cursor = _page(workspaces, params.get("cursor"), params.get("limit"))
         return WorkspacePage(items=page, next_cursor=next_cursor)
 
-    async with open_provider(provider, credential, base_url) as adapter:
+    async with open_provider(provider, credential, base_url, mode=provider_mode) as adapter:
         if operation == "list_containers":
             raw = await adapter.list_projects(workspace_id)
             values = [as_container(value, provider) for value in raw]
@@ -563,7 +593,7 @@ async def _dispatch(operation: str, params: dict[str, Any], provider: str, crede
             )
 
         if operation == "transition_work_item":
-            if provider in {"plane", "planner", "monday"} and not container_id:
+            if provider in {"plane", "planner", "monday", "asana", "clickup", "trello", "basecamp", "github"} and not container_id:
                 raise HTTPException(
                     status_code=400,
                     detail="containerId is required by this provider to transition the work item.",
@@ -647,17 +677,26 @@ class PMGateway:
         provider: str,
         credential: str,
         base_url: str | None = None,
+        mode: Any = None,
         **params: Any,
     ) -> Any:
         if operation not in _OPERATION_BASES:
             raise HTTPException(status_code=501, detail=f"Unknown operation: {operation}")
         provider = normalize_provider(provider)
+        if mode is None:
+            provider_mode = "sdk" if provider == "jira" else None
+        elif hasattr(mode, "value"):
+            provider_mode = mode.value
+        else:
+            provider_mode = str(mode)
         params = {
             **params,
             "x_pm_provider": provider,
             "x_pm_provider_credential": credential,
             "x_pm_provider_base_url": base_url,
         }
+        if provider_mode:
+            params["x_pm_provider_mode"] = provider_mode
         if operation == "transition_work_item" and isinstance(
             params.get("transition_request"), dict
         ):

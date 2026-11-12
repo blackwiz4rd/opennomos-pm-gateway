@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from pm_gateway.app import app
 from pm_gateway import Operation, PMGateway, Provider
 from pm_gateway.adapters.factory import SUPPORTED_PROVIDERS
+from pm_gateway.app import app
 from pm_gateway.generated.apis.discovery_api_base import BaseDiscoveryApi
 from pm_gateway.generated.models.container_page import ContainerPage
 
@@ -111,6 +111,7 @@ async def test_list_containers_accepts_bounded_integer_query_limit(
             cursor: str | None,
             limit: int | None,
             base_url: str | None,
+            provider_mode: str | None = None,
         ) -> ContainerPage:
             received_limits.append(limit)
             return ContainerPage(items=[])

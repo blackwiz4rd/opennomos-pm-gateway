@@ -7,7 +7,6 @@ representations used by :class:`NormalizedWorkItem`.
 from datetime import datetime
 from typing import Any
 
-
 # ── state category ──
 
 # Map various state group/category names to the normalized set:

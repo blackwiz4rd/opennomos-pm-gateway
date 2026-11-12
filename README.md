@@ -36,7 +36,7 @@ The gateway is built in the following order of priority:
 | # | Phase | Goal | Status |
 | --- | --- | --- | --- |
 | 1 | Standard | Provide a global standard terminology and API for project management tools (provider-neutral vocabulary + single OpenAPI contract). | In progress (v0.1 draft) |
-| 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner, monday.com) |
+| 2 | Provider support | Test and support different PM tools via adapters, validated live where possible; capabilities reported per provider. | In progress (Plane, Jira, Planner, monday.com, Asana) |
 | 3 | Compliance & routing | Enable unknown/other software to become compliant with the standard, with the gateway simply re-routing requests to them (conformance + passthrough). | In progress (passthrough routing and conformance checker implemented) |
 | 4 | SDKs | Provide SDK support for different programming languages beyond Python. | Planned |
 
@@ -120,30 +120,35 @@ The table explicitly lists every product in the
 plus Azure DevOps from the OpenNomos product roadmap. “Implemented” means an
 adapter is present in this package; it does not imply full feature parity. The
 provider test column means live/provider validation, not unit-test coverage.
-The roadmap-priority column records OpenNomos's current priorities for one
-consumer; it is not a commitment or prioritization for the standalone gateway.
 
-| Provider / product | Adapter status | Live/provider-tested | OpenNomos roadmap priority | Est. PM-category adoption (Ramp, Oct 2026) | Free-account API access / credential | Native model / qualification |
-| --- | --- | --- | --- | ---: | --- | --- |
-| Jira | Implemented | Yes | Implemented | [47%](https://ramp.com/vendors/jira) | [Yes — API token on Free Cloud](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) | Issue |
-| Confluence | Future candidate | — | Unsequenced | Not reported | [Yes — API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) on Free Cloud | Page/content by default; inline tasks can use a work-item profile |
-| Trello | Future candidate | — | Unsequenced | [7%](https://ramp.com/vendors/trello) | [Yes — API key + user token](https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/) | Card |
-| Plane | Implemented | Yes | Implemented | Not reported | [Yes — personal API key on Free](https://developers.plane.so/api-reference/introduction) | Work Item |
-| Smartsheet | Future candidate | — | Unsequenced | [9%](https://ramp.com/vendors/smartsheet) | [No — trial cannot issue API tokens](https://help.smartsheet.com/articles/529590-smartsheet-free-trial-faqs); Business/Enterprise required | Row in an explicitly selected Sheet |
-| Microsoft Planner | Implemented | **No** | Implemented | Not reported | [Conditional — OAuth, work/school tenant; personal accounts unsupported](https://learn.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0) | `plannerTask`; unit normalization tests exist, but no live/provider validation |
-| Asana | Planned | — | Could | [21%](https://ramp.com/vendors/asana) | [Yes — personal access token on Personal](https://developers.asana.com/docs/personal-access-token) | Task; preserve multi-project memberships |
-| monday.com | Implemented | Yes | Could | [19%](https://ramp.com/vendors/monday) | [Yes — API token in free developer sandbox](https://developer.monday.com/api-reference/docs/developer-sandbox-account) | Item with runtime board columns; board groups are the workflow states |
-| Airtable | Future candidate | — | Unsequenced | [16%](https://ramp.com/vendors/airtable) | [Yes — personal access token on Free](https://support.airtable.com/articles/9934989703-creating-personal-access-tokens); Free API quota applies | Record only after selecting/configuring a table |
-| Linear | Planned | — | Should | [15%](https://ramp.com/vendors/linear) | [Yes — personal API key on Free](https://linear.app/developers/graphql) | Issue |
-| ClickUp | Planned | — | Could | [9%](https://ramp.com/vendors/clickup) | [Yes — personal API token on Free Forever](https://developer.clickup.com/docs/authentication) | Task |
-| Notion | Future candidate | — | Unsequenced | [32%](https://ramp.com/vendors/notion) | [Yes — internal integration token on Free](https://developers.notion.com/guides/get-started/internal-integrations); share pages with it | Page/data-source item only by configuration |
-| Microsoft Project | Conditional | — | Unsequenced | Not reported | Conditional — no generic Project API; choose a product/API family first | Must choose a specific Project product/API family |
-| Wrike | Future candidate | — | Unsequenced | [1%](https://ramp.com/vendors/wrike) | [Yes — permanent token or OAuth; API is free on Free plan](https://developers.wrike.com/docs/faq) | Task / Work Item |
-| Basecamp | Future candidate | — | Unsequenced | [4%](https://ramp.com/vendors/basecamp) | Free plan; [OAuth token, no API key](https://github.com/basecamp/bc-api/blob/master/sections/authentication.md); API docs don’t state a paid-plan requirement | To-do/Card; Message is a separate content profile |
-| Zoho Projects | Planned | — | Could | Not reported | [Yes — OAuth with a free Zoho account](https://www.zoho.com/projects/help/rest-api/get-tickets-api.html) | Task; preserve API generation/layout differences |
-| GitHub Issues | Planned | — | Should | Not reported | [Yes — personal access token on GitHub Free](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) | Issue; pull-request semantics are an extension |
-| GitLab Issues | Future candidate | — | Unsequenced | Not reported | [Yes — personal access token on GitLab Free](https://docs.gitlab.com/user/profile/personal_access_tokens/) | Issue / Work Item; model varies by GitLab version |
-| Azure DevOps | Roadmap candidate | — | Could | Not reported | [Yes — PAT; Basic is free for the first five users](https://learn.microsoft.com/en-us/azure/devops/organizations/billing/buy-basic-access-add-users?view=azure-devops) | Product-roadmap target; not included in the 18-product field inventory |
+The **Implementation** column records how the adapter talks to the vendor:
+“Vendor SDK” means it uses the vendor's official Python client library, while
+“Direct API” means it calls the vendor's HTTP API itself with `httpx`. Direct
+API adapters keep the credential, redirect, and timeout handling identical to
+the rest of the gateway and add no third-party dependency.
+
+| Provider / product | Implementation status | Implementation | Live/provider-tested | Est. PM-category adoption (Ramp, Oct 2026) | Free-account API access / credential | Native model / qualification | OpenAPI spec (download) |
+| --- | --- | --- | --- | ---: | --- | --- | --- |
+| Jira | Implemented | Vendor SDK (`jira`) or Direct API (`httpx`) via `X-PM-Provider-Mode` | Yes | [47%](https://ramp.com/vendors/jira) | [Yes — API token on Free Cloud](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) | Issue | Yes — [swagger-v3.v3.json](https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json) |
+| Confluence | Not implemented | — | — | Not reported | [Yes — API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) on Free Cloud | Page/content by default; inline tasks can use a work-item profile | Yes — [swagger.v3.json](https://developer.atlassian.com/cloud/confluence/swagger.v3.json) |
+| Trello | Implemented | Direct API (`httpx`) | Pending | [7%](https://ramp.com/vendors/trello) | [Yes — API key + user token](https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/) | Card | Yes — [swagger.v3.json](https://developer.atlassian.com/cloud/trello/swagger.v3.json) |
+| Plane | Implemented | Vendor SDK (`plane-sdk`) | Yes | Not reported | [Yes — personal API key on Free](https://developers.plane.so/api-reference/introduction) | Work Item | Yes — self-hosted `GET /api/schema/?format=openapi-json` (no public Cloud URL) |
+| Smartsheet | Not implemented | — | — | [9%](https://ramp.com/vendors/smartsheet) | [No — trial cannot issue API tokens](https://help.smartsheet.com/articles/529590-smartsheet-free-trial-faqs); Business/Enterprise required | Row in an explicitly selected Sheet | Yes (URL TBD) — Redocly-hosted `openapi.yaml`, not directly fetchable |
+| Microsoft Planner | Implemented | Direct API (`httpx` + `msal` for OAuth) | **No** | Not reported | [Conditional — OAuth, work/school tenant; personal accounts unsupported](https://learn.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0) | `plannerTask`; unit normalization tests exist, but no live/provider validation | Yes — Graph [openapi.yaml](https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml) (Planner is a subset) |
+| Asana | Implemented | Direct API (`httpx`) | Pending | [21%](https://ramp.com/vendors/asana) | [Yes — personal access token on Personal](https://developers.asana.com/docs/personal-access-token) | Task; project sections are the workflow states; multi-project memberships preserved | Yes — [asana_oas.yaml](https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml) |
+| monday.com | Implemented | Direct API (`httpx`, GraphQL) | Yes | [19%](https://ramp.com/vendors/monday) | [Yes — API token in free developer sandbox](https://developer.monday.com/api-reference/docs/developer-sandbox-account) | Item with runtime board columns; board groups are the workflow states | No — GraphQL only |
+| Airtable | Not implemented | — | — | [16%](https://ramp.com/vendors/airtable) | [Yes — personal access token on Free](https://support.airtable.com/articles/9934989703-creating-personal-access-tokens); Free API quota applies | Record only after selecting/configuring a table | No official spec (third-party generators only) |
+| Linear | Not implemented | — | — | [15%](https://ramp.com/vendors/linear) | [Yes — personal API key on Free](https://linear.app/developers/graphql) | Issue | No — GraphQL only |
+| ClickUp | Implemented | Direct API (`httpx`) | Pending | [9%](https://ramp.com/vendors/clickup) | [Yes — personal API token on Free Forever](https://developer.clickup.com/docs/authentication) | Task; Lists are the containers and List statuses are the workflow states | Yes — [clickup-api-v2-reference.json](https://developer.clickup.com/openapi/clickup-api-v2-reference.json) |
+| Notion | Not implemented | — | — | [32%](https://ramp.com/vendors/notion) | [Yes — internal integration token on Free](https://developers.notion.com/guides/get-started/internal-integrations); share pages with it | Page/data-source item only by configuration | Yes (unofficial) — [notion-openapi.json](https://raw.githubusercontent.com/makenotion/notion-mcp-server/main/scripts/notion-openapi.json) |
+| Microsoft Project | Not implemented | — | — | Not reported | Conditional — no generic Project API; choose a product/API family first | Must choose a specific Project product/API family | No — no generic Project API |
+| Wrike | Not implemented | — | — | [1%](https://ramp.com/vendors/wrike) | [Yes — permanent token or OAuth; API is free on Free plan](https://developers.wrike.com/docs/faq) | Task / Work Item | Yes (URL TBD) — published July 2025, behind JS-rendered docs |
+| Basecamp | Implemented | Direct API (`httpx`) | Pending | [4%](https://ramp.com/vendors/basecamp) | Free plan; [OAuth token, no API key](https://github.com/basecamp/bc-api/blob/master/sections/authentication.md); API docs don’t state a paid-plan requirement | To-do/Card; Message is a separate content profile | Yes — [openapi.json](https://raw.githubusercontent.com/basecamp/basecamp-sdk/main/openapi.json) |
+| Zoho Projects | Not implemented | — | — | Not reported | [Yes — OAuth with a free Zoho account](https://www.zoho.com/projects/help/rest-api/get-tickets-api.html) | Task; preserve API generation/layout differences | No published OAS (Zoho ships OAS for CRM/Desk/WorkDrive, not Projects) |
+| GitHub Issues | Implemented | Direct API (`httpx`) | Pending | Not reported | [Yes — personal access token on GitHub Free](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) | Issue; pull-request semantics are an extension | Yes — [api.github.com.json](https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json) |
+| GitLab Issues | Not implemented | — | — | Not reported | [Yes — personal access token on GitLab Free](https://docs.gitlab.com/user/profile/personal_access_tokens/) | Issue / Work Item; model varies by GitLab version | Yes (URL TBD) — partial OpenAPI in `gitlab-org/gitlab`, path not resolvable unauthenticated |
+| Azure DevOps | Not implemented | — | — | Not reported | [Yes — PAT; Basic is free for the first five users](https://learn.microsoft.com/en-us/azure/devops/organizations/billing/buy-basic-access-add-users?view=azure-devops) | Product-roadmap target; not included in the 18-product field inventory | Yes (URL TBD) — `MicrosoftDocs/vsts-rest-api-specs` (repo not anonymously reachable) |
+| Compliant (any tool) | Implemented | Direct API passthrough (`httpx`) | — | — | Tool-defined bearer token | The tool implements the standard API itself; the gateway only re-routes | Yes — this package's own [`spec/pm-api-openapi-v0.1.yaml`](spec/pm-api-openapi-v0.1.yaml) |
 
 The adoption estimates are Ramp Rate's share of businesses in its U.S. business
 dataset that purchased from the vendor among businesses purchasing in the
@@ -166,17 +171,27 @@ test until its product family is selected. For GitHub/GitLab issues, use the
 vendor's Issues API and a test repository/project; the listed vendors may
 classify those products under DevOps rather than PM.
 
-The OpenNomos Should/Could priorities come from the
-[PM integrations roadmap](https://github.com/blackwiz4rd/opennomos/blob/main/docs/product-requirements/roadmap.md#month-3--november-2026--pm-tool-integrations-scaling-source)
-and may change. They do not constrain the standalone gateway's future provider
-support. The 18 mapped products come from the
+The 18 mapped products come from the
 [PM tools comparison](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tools-comparison.md)
 and
 [field-mapping inventory](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tool-openapi-field-mapping.md);
-“Future candidate” means mapped for possible support but not sequenced as an
-integration in that roadmap. Microsoft Project stays conditional until its API
-family is selected. Provider support is operation-specific; use
+“Not implemented” means mapped for possible support but not yet built as an
+adapter. Microsoft Project stays unimplemented until its API family is selected.
+Provider support is operation-specific; use
 `get_capabilities` to check the operations available for a particular provider.
+
+The **OpenAPI spec (download)** column records whether a provider publishes a
+machine-readable REST description and where to get it. It is a snapshot checked
+2026-11-10 by fetching each linked URL; vendor URLs drift, so re-verify before
+relying on one. “Yes (URL TBD)” means the vendor ships a spec but no stable,
+directly fetchable URL was confirmed from here — the download script in
+[Provider OpenAPI specs](#provider-openapi-specs) skips those with a note rather
+than failing. “No — GraphQL only” means the vendor's public API is GraphQL, so
+there is no OpenAPI document to generate REST models from. The Notion document
+is unofficial: it is published from Notion's own MCP server repository, not as a
+supported contract, and the Top-level MCP surface may lag the REST API. These
+provider-native specs are reference material for adapter work; they are not the
+gateway's contract, and nothing in this package generates code from them.
 
 ### Future interoperability scope
 
@@ -226,20 +241,24 @@ adapter in-process: you do not need to start the gateway service, configure a
 gateway bearer token, or make an HTTP request to the gateway.
 
 Create a `PMGateway` and pass the provider credentials on each `execute` call.
-Supported provider keys are `plane`, `jira`, `planner`, `monday`, and
-`compliant`. Jira and compliant providers require their site URL as `base_url`;
-Plane, Planner, and monday.com use their documented defaults unless an
-allowlisted URL is supplied. `base_url` is
+Supported provider keys are `plane`, `jira`, `planner`, `monday`, `asana`,
+`clickup`, `trello`, `basecamp`, `github`, and `compliant`. Jira and compliant providers require their site URL
+as `base_url`; Plane, Planner, monday.com, Asana, and ClickUp use their
+documented defaults unless an allowlisted URL is supplied. Jira supports two
+backend modes selected with `X-PM-Provider-Mode` (or the SDK `mode`
+argument): `http-client` (default, generated OpenAPI client) and `sdk`
+(vendor `jira` client). `base_url` is
 security-sensitive because it decides where the provider credential is sent:
 HTTPS is required, known SaaS endpoints (Jira Cloud, Plane Cloud, Microsoft
-Graph, and monday.com) are trusted by default, and every other host must be
-explicitly
+Graph, monday.com, Asana, and ClickUp) are trusted by default, and every other
+host must be explicitly
 allowlisted with `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS`. Planner is restricted to
 Microsoft Graph endpoints. Never pair a stored credential with an untrusted base
 URL.
 Credentials use the provider's expected format: Plane API token, Jira
 `email:api-token`, Planner `tenant_id:client_id:client_secret`, monday.com
-personal API token, or, for a
+personal API token, Asana personal access token, ClickUp personal API token, or,
+for a
 compliant provider, the bearer token accepted by the remote service. Keep
 credentials in a secret store or environment variables, not in source control.
 
@@ -284,7 +303,9 @@ asyncio.run(main())
 `execute(operation, *, provider, credential, base_url=None, **params)` takes an
 `Operation` enum member and that operation's parameters. The `provider`
 argument takes a `Provider` enum member: `Provider.PLANE`, `Provider.JIRA`,
-`Provider.PLANNER`, `Provider.MONDAY`, or `Provider.COMPLIANT`. Use operation
+`Provider.PLANNER`, `Provider.MONDAY`, `Provider.ASANA`, `Provider.CLICKUP`, or
+`Provider.COMPLIANT`. For Jira, pass `mode=ProviderMode.HTTP` or
+`ProviderMode.SDK` (defaults to `SDK` in the in-process SDK). Use operation
 members such as
 `Operation.GET_CAPABILITIES`, `Operation.LIST_CONTAINERS`, or
 `Operation.LIST_WORK_ITEMS`; the enum is exported from `pm_gateway`. Parameter
@@ -527,6 +548,33 @@ run the service tests whenever the generator or specification changes. The
 to the package. A test also fails if a generated API operation is missing from
 the gateway dispatch registry.
 
+## Provider OpenAPI specs
+
+Adapter work sometimes benefits from the vendor's own OpenAPI document: to
+compare field shapes, verify enums, or generate reference models while mapping a
+provider onto the standard API. `scripts/download-provider-specs.sh` fetches
+every provider spec that has a stable public URL into one directory:
+
+```sh
+./scripts/download-provider-specs.sh
+# → /tmp/pm-gateway-openapi-specs/{jira,confluence,trello,planner,asana,clickup,notion,basecamp,github}.json|yaml
+
+./scripts/download-provider-specs.sh --list              # show the catalog only
+./scripts/download-provider-specs.sh --provider jira     # fetch one provider
+./scripts/download-provider-specs.sh --out-dir ./spec/providers   # choose the destination
+```
+
+The script only downloads; it never invokes OpenAPI Generator. Point
+`openapi-generator-cli` at the downloaded file yourself if you want provider
+models. Run it from the package root (in the OpenNomos monorepo, prefix with
+`pm-gateway/`). It requires `curl` and reports a per-provider OK/FAIL summary,
+exiting non-zero if a requested download fails.
+
+These are provider-native contracts and are **not** the gateway's contract.
+`spec/pm-api-openapi-v0.1.yaml` remains the only source for generated server
+code. Providers marked “Yes (URL TBD)” or “No” in the support table are listed
+in the script's catalog as notes and skipped.
+
 ## Run
 
 ```sh
@@ -540,13 +588,18 @@ configure the listener.
 The service mounts the draft OpenAPI API at `/pm/v1`. `/healthz` is an
 unauthenticated liveness endpoint; API operations require the gateway bearer token.
 
-Plane, Jira, Microsoft Planner, and monday.com adapters are implemented in
-`src/pm_gateway/adapters/`. They support workspace/container discovery, work-item
-reads, workflow-state reads and transitions; Jira and Planner also expose their
-current board/bucket behavior. monday.com maps boards to containers and board
-groups to workflow states; other board columns are surfaced through normalized
-custom fields. Capabilities mark custom fields, milestones, comments,
-attachments, and general field updates unsupported until implemented.
+Plane, Jira, Microsoft Planner, monday.com, Asana, and ClickUp adapters are
+implemented in `src/pm_gateway/adapters/`. They support workspace/container
+discovery, work-item reads, workflow-state reads and transitions; Jira and
+Planner also expose their current board/bucket behavior. monday.com maps boards
+to containers and board groups to workflow states; other board columns are
+surfaced through normalized custom fields. Asana maps projects to containers and
+project sections to workflow states; a task's project memberships are preserved,
+and its custom fields are surfaced through normalized custom fields. ClickUp
+maps Lists to containers and List statuses to workflow states; its custom fields
+are surfaced through normalized custom fields. Capabilities mark custom fields,
+milestones, comments, attachments, and general field updates unsupported until
+implemented.
 The `compliant` provider is a passthrough to third-party software that implements
 the standard API directly.
 
@@ -592,6 +645,22 @@ file (never committed), and is never printed. CI runs the same suite when the
 `MONDAY_API_TOKEN` repository secret is configured; the job is non-blocking and
 publishes the report as an artifact and in the workflow summary.
 
+The live Asana suite works the same way and writes to `reports/asana-live/`:
+
+```sh
+ASANA_LIVE=1 ASANA_API_TOKEN='...' python -m pytest tests/live/test_asana_live.py -m live -v
+```
+
+Add `ASANA_LIVE_WRITE_PROJECT_ID=<project gid>` to exercise the
+create/move/delete lifecycle on a disposable project; the test deletes the task
+it creates. `ASANA_TEST_WORKSPACE_ID` and `ASANA_TEST_PROJECT_ID` pin the
+workspace and project under test. `ASANA_API_TOKEN` is read from the environment
+or from a local `.env` file (never committed), and is never printed. CI runs the
+suite when the `ASANA_API_TOKEN` repository secret is configured; the job is
+non-blocking and publishes the report as an artifact and in the workflow summary.
+Set `PM_GATEWAY_LIVE_PROVIDER=asana|monday` to choose which report a combined
+`tests/live` run writes.
+
 When working from the OpenNomos monorepo, run these from `pm-gateway/`.
 
 ### Pre-push secret scanning
@@ -623,7 +692,8 @@ as a trusted backend component, not as an authorization boundary.
 - Use a long random `PM_GATEWAY_API_TOKEN`. The service fails closed when it is
   unset. Apply rate limiting at the reverse proxy.
 - `base_url` is part of the credential boundary. HTTPS is required; only known
-  SaaS endpoints (including `api.monday.com`) are trusted by default, and every
+  SaaS endpoints (including `api.monday.com` and `app.asana.com`) are trusted by
+  default, and every
   other host must be
   explicitly allowlisted. Planner is limited to Graph endpoints. Never let an
   untrusted user choose the base URL for a stored credential. The built-in
@@ -652,11 +722,13 @@ as a trusted backend component, not as an authorization boundary.
 | `PM_GATEWAY_API_TOKEN` | required | Bearer token for the HTTP service. |
 | `PM_GATEWAY_HOST` | `127.0.0.1` | HTTP listen address. |
 | `PM_GATEWAY_PORT` | `8080` | HTTP listen port. |
-| `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` | empty | Comma-separated host allowlist; supports `*.example.com`. Required for any host not covered by the built-in Jira Cloud, Plane Cloud, Microsoft Graph, and monday.com defaults. |
+| `PM_GATEWAY_ALLOWED_PROVIDER_HOSTS` | empty | Comma-separated host allowlist; supports `*.example.com`. Required for any host not covered by the built-in Jira Cloud, Plane Cloud, Microsoft Graph, monday.com, and Asana defaults. |
 | `PM_GATEWAY_ALLOW_INSECURE_HTTP` | off | Allow `http://` provider URLs. Use only for local development. |
 | `PM_GATEWAY_PROVIDER_TIMEOUT_SECONDS` | `30` | Timeout for provider HTTP requests. |
 | `PM_GATEWAY_MONDAY_MAX_ITEMS` | `10000` | Maximum items fetched from one monday.com board listing (`0` disables the cap). |
 | `PM_GATEWAY_MONDAY_API_VERSION` | unset | Optional `API-Version` header sent to monday.com; the API default is used when unset. |
+| `PM_GATEWAY_ASANA_MAX_ITEMS` | `10000` | Maximum items fetched from one Asana listing (`0` disables the cap). |
+| `PM_GATEWAY_CLICKUP_MAX_ITEMS` | `10000` | Maximum items fetched from one ClickUp List listing (`0` disables the cap). |
 | `PM_GATEWAY_MAX_BODY_BYTES` | `1048576` | Maximum request body accepted by the HTTP service. |
 | `PM_GATEWAY_EXPOSE_UPSTREAM_ERRORS` | off | Include bounded upstream error text in responses. |
 

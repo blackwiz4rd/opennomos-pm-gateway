@@ -78,6 +78,12 @@ class NormalizedWorkItem(BaseModel):
     # Custom fields
     custom_fields: dict[str, Any] = Field(default_factory=dict)
 
+    # Additional container memberships beyond ``project_id``. Providers whose
+    # work items can belong to several containers at once (for example an Asana
+    # task in multiple projects) list every membership here so the primary
+    # ``project_id`` does not hide the rest.
+    memberships: list[dict[str, Any]] = Field(default_factory=list)
+
     # Provider metadata
     provider: str = ""
     raw: dict[str, Any] = Field(default_factory=dict)

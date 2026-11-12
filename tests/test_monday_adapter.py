@@ -573,7 +573,7 @@ def test_monday_items_flow_through_the_standard_route(
             return [normalized]
 
     @asynccontextmanager
-    async def fake_open_provider(provider, credential, base_url):
+    async def fake_open_provider(provider, credential, base_url, *, mode=None):
         assert provider == "monday"
         assert credential == CREDENTIAL
         yield FakeAdapter()

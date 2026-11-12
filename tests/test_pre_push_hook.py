@@ -95,6 +95,7 @@ def test_clean_commit_is_allowed(repo: Path) -> None:
         ("settings.py", f'TOKEN = "{GITHUB_TOKEN}"\n'),
         ("monday.py", f"MONDAY_API_TOKEN={MONDAY_JWT}\n"),
         ("plane.py", f"PLANE_API_KEY={PLANE_KEY}\n"),
+        ("asana.py", f'ASANA_API_TOKEN = "{HIGH_ENTROPY_VALUE}"\n'),
         ("credentials.py", f'client_secret = "{HIGH_ENTROPY_VALUE}"\n'),
         ("keys/server.pem", PEM_KEY),
         (".env", "MONDAY_API_TOKEN=abcdef\n"),
@@ -112,6 +113,7 @@ def test_secrets_are_blocked(repo: Path, name: str, content: str) -> None:
     ("name", "content"),
     [
         (".env.example", "MONDAY_API_TOKEN=your_token_here\n"),
+        (".env.example", "ASANA_API_TOKEN=your_token_here\n"),
         ("docs/guide.md", "Set `api_key` to your own value in the environment.\n"),
         ("ok.py", 'api_key = "placeholder-value-000000"  # secret-scan:allow\n'),
         ("code.py", "api_key = self._credential\nclient_secret = settings.client_secret\n"),
