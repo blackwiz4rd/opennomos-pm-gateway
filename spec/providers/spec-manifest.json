@@ -4,7 +4,7 @@
       "status": "available",
       "url": "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
       "filename": "jira-openapi.json",
-      "sha256": "99d9ae7bc603ef81921948689d2502c85eff1a76d9ce5f2c14bfa74cea904f3b"
+      "sha256": "64e570a083e509e084ce9f810580b161127dd4e5804547d92afd6be28333fa34"
     },
     "confluence": {
       "status": "available",
@@ -57,7 +57,7 @@
       "status": "available",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "filename": "github-api.github.com-openapi.json",
-      "sha256": "3e056802680135531a5b8b6c8b3fd35e4e0c9705a6130e128c655e01ed9a8d1e"
+      "sha256": "2a93393cfccb292caeaa0ad9ab250900e361bda28f76743cc812dd0951cae8f0"
     }
   }
 }

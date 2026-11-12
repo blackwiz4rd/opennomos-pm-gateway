@@ -22,7 +22,8 @@ def test_provider_specs_match_manifest() -> None:
         if entry["status"] != "available":
             continue
         url = entry["url"]
-        with urllib.request.urlopen(url, timeout=60) as response:
+        request = urllib.request.Request(url, headers={"User-Agent": "pm-gateway-ci/1.0"})
+        with urllib.request.urlopen(request, timeout=300) as response:
             data = response.read()
         actual = hashlib.sha256(data).hexdigest()
         assert actual == entry["sha256"], (

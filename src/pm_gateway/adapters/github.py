@@ -95,8 +95,8 @@ class GitHubProvider:
         if self._client is not None:
             try:
                 await self._client.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Ignored exception: %s", type(exc).__name__)
         self._client = None
         self._repos = None
         self._issues = None
@@ -192,8 +192,8 @@ class GitHubProvider:
                 login = _as_dict(raw[0]).get("owner", {}).get("login")
                 if login:
                     return str(login)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Ignored exception: %s", type(exc).__name__)
         try:
             import httpx
             response = await asyncio.to_thread(
@@ -207,8 +207,8 @@ class GitHubProvider:
                 login = response.json().get("login")
                 if login:
                     return str(login)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Ignored exception: %s", type(exc).__name__)
         return owner
 
     async def list_work_items(self, workspace_slug: str, project_id: str, expand: str | None = None, board_id: str | None = None, sprint_ids: list[str] | None = None) -> list[dict]:

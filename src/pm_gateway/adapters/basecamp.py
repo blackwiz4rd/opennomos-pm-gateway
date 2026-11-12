@@ -103,8 +103,8 @@ class BasecampProvider:
         if self._client is not None:
             try:
                 await self._client.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Ignored exception: %s", type(exc).__name__)
         self._client = None
         self._projects = None
         self._todos = None

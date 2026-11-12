@@ -130,8 +130,8 @@ class AsanaProvider:
         if client is not None:
             try:
                 await client.aclose()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Ignored exception: %s", type(exc).__name__)
 
     def _sanitize(self, text: str) -> str:
         value = str(text or "")

@@ -82,6 +82,9 @@ search_parent_directories = true
 [tool.setuptools.package-data]
 pm_gateway = ["py.typed"]
 
+[tool.ruff]
+extend-exclude = ["src/pm_gateway/generated"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

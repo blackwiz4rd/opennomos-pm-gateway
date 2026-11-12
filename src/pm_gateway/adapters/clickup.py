@@ -111,8 +111,8 @@ class ClickUpProvider:
         if client is not None:
             try:
                 await client.aclose()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Ignored exception: %s", type(exc).__name__)
 
     def _sanitize(self, text: str) -> str:
         value = str(text or "")
@@ -256,8 +256,8 @@ class ClickUpProvider:
                 fl = await self._request("GET", f"/space/{space_id}/list", params={})
                 for lst in fl.get("lists", []) if isinstance(fl, dict) else []:
                     results.append(self._normalize_list(lst))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Ignored exception: %s", type(exc).__name__)
             # folders
             try:
                 folders_resp = await self._request("GET", f"/space/{space_id}/folder", params={})
