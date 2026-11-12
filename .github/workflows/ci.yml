@@ -314,13 +314,40 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [test, generated-contract, container, build, secret-scan]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify version upgrade
+        run: |
+          python -m pip install -q 'packaging>=24'
+          python - <<'PY'
+          import subprocess, os
+          from packaging.version import Version
+
+          current = os.environ["GITHUB_REF_NAME"].removeprefix("v")
+          tags = subprocess.check_output(
+              ["git", "tag", "-l", "v*"], text=True
+          ).split()
+          previous = [t.removeprefix("v") for t in tags if t.removeprefix("v") != current]
+          if previous:
+              latest_previous = max(previous, key=Version)
+              if Version(current) <= Version(latest_previous):
+                  raise SystemExit(
+                      f"Refusing to publish: {current} is not a version upgrade "
+                      f"over {latest_previous}. Bump the version (new tag) first."
+                  )
+              print(f"Version upgrade confirmed: {latest_previous} -> {current}")
+          else:
+              print(f"First release: {current}")
+          PY
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: dist

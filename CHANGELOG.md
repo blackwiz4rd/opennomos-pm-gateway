@@ -6,6 +6,8 @@ versioned separately in the OpenAPI document.
 
 ## [Unreleased]
 
+## [0.1.0a3] - 2026-11-12
+
 ### Added
 
 - monday.com provider adapter (`Provider.MONDAY` / `X-PM-Provider: monday`).
