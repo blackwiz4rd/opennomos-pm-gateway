@@ -22,7 +22,8 @@ from fastapi import (  # noqa: F401
     status,
 )
 
-from pydantic import Field, field_validator
+from pm_gateway.generated.models.extra_models import TokenModel  # noqa: F401
+from pydantic import Field, StrictStr, field_validator
 from typing import List, Optional
 from typing_extensions import Annotated
 from pm_gateway.generated.models.api_error import ApiError
@@ -33,7 +34,6 @@ from pm_gateway.generated.models.custom_field_definition_page import CustomField
 from pm_gateway.generated.models.iteration_page import IterationPage
 from pm_gateway.generated.models.milestone_page import MilestonePage
 from pm_gateway.generated.models.workspace_page import WorkspacePage
-from pm_gateway.generated.models.extra_models import TokenModel  # noqa: F401
 from pm_gateway.generated.security_api import get_token_bearerAuth
 
 router = APIRouter()
@@ -56,10 +56,10 @@ for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
     response_model_by_alias=True,
 )
 async def get_capabilities(
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -83,13 +83,13 @@ async def get_capabilities(
     response_model_by_alias=True,
 )
 async def list_workspaces(
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    cursor: Annotated[Optional[str], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
     limit: Optional[Annotated[int, Field(le=200, ge=1)]] = Query(50, description="", alias="limit", ge=1, le=200),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
-    x_pm_workspace_slugs: Annotated[Optional[str], Field(description="Comma-separated workspace slugs configured by OpenNomos for this credential. Used only by workspace discovery; the gateway stores none.")] = Header(None, description="Comma-separated workspace slugs configured by OpenNomos for this credential. Used only by workspace discovery; the gateway stores none."),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_workspace_slugs: Annotated[Optional[StrictStr], Field(description="Comma-separated workspace slugs configured by OpenNomos for this credential. Used only by workspace discovery; the gateway stores none.")] = Header(None, description="Comma-separated workspace slugs configured by OpenNomos for this credential. Used only by workspace discovery; the gateway stores none."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -114,13 +114,13 @@ async def list_workspaces(
     response_model_by_alias=True,
 )
 async def list_containers(
-    workspaceId: str = Path(..., description=""),
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    cursor: Annotated[Optional[str], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
+    workspaceId: StrictStr = Path(..., description=""),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
     limit: Optional[Annotated[int, Field(le=200, ge=1)]] = Query(50, description="", alias="limit", ge=1, le=200),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -145,14 +145,14 @@ async def list_containers(
     response_model_by_alias=True,
 )
 async def list_boards(
-    workspaceId: str = Path(..., description=""),
-    containerId: str = Path(..., description=""),
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    cursor: Annotated[Optional[str], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
+    workspaceId: StrictStr = Path(..., description=""),
+    containerId: StrictStr = Path(..., description=""),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
     limit: Optional[Annotated[int, Field(le=200, ge=1)]] = Query(50, description="", alias="limit", ge=1, le=200),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -177,14 +177,14 @@ async def list_boards(
     response_model_by_alias=True,
 )
 async def get_board_scope(
-    workspaceId: str = Path(..., description=""),
-    containerId: str = Path(..., description=""),
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    board_id: Optional[str] = Query(None, description="", alias="boardId"),
-    iteration_ids: Optional[List[str]] = Query(None, description="", alias="iterationIds"),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    workspaceId: StrictStr = Path(..., description=""),
+    containerId: StrictStr = Path(..., description=""),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    board_id: Optional[StrictStr] = Query(None, description="", alias="boardId"),
+    iteration_ids: Optional[List[StrictStr]] = Query(None, description="", alias="iterationIds"),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -210,14 +210,14 @@ async def get_board_scope(
     response_model_by_alias=True,
 )
 async def list_custom_field_definitions(
-    workspaceId: str = Path(..., description=""),
-    containerId: str = Path(..., description=""),
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    cursor: Annotated[Optional[str], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
+    workspaceId: StrictStr = Path(..., description=""),
+    containerId: StrictStr = Path(..., description=""),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
     limit: Optional[Annotated[int, Field(le=200, ge=1)]] = Query(50, description="", alias="limit", ge=1, le=200),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -242,15 +242,15 @@ async def list_custom_field_definitions(
     response_model_by_alias=True,
 )
 async def list_iterations(
-    workspaceId: str = Path(..., description=""),
-    containerId: str = Path(..., description=""),
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    board_id: Annotated[Optional[str], Field(description="Optional board identifier for providers where iterations are board-scoped.")] = Query(None, description="Optional board identifier for providers where iterations are board-scoped.", alias="boardId"),
-    cursor: Annotated[Optional[str], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
+    workspaceId: StrictStr = Path(..., description=""),
+    containerId: StrictStr = Path(..., description=""),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    board_id: Annotated[Optional[StrictStr], Field(description="Optional board identifier for providers where iterations are board-scoped.")] = Query(None, description="Optional board identifier for providers where iterations are board-scoped.", alias="boardId"),
+    cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
     limit: Optional[Annotated[int, Field(le=200, ge=1)]] = Query(50, description="", alias="limit", ge=1, le=200),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
@@ -276,14 +276,14 @@ async def list_iterations(
     response_model_by_alias=True,
 )
 async def list_milestones(
-    workspaceId: str = Path(..., description=""),
-    containerId: str = Path(..., description=""),
-    x_pm_provider: Annotated[str, Field(description="Adapter key selected by OpenNomos.")] = Header(..., description="Adapter key selected by OpenNomos."),
-    x_pm_provider_credential: Annotated[str, Field(min_length=1, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(..., description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
-    cursor: Annotated[Optional[str], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
+    workspaceId: StrictStr = Path(..., description=""),
+    containerId: StrictStr = Path(..., description=""),
+    x_pm_provider: Annotated[StrictStr, Field(description="Adapter key selected by OpenNomos.")] = Header(None, description="Adapter key selected by OpenNomos."),
+    x_pm_provider_credential: Annotated[str, Field(min_length=1, strict=True, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.")] = Header(None, description="Provider credential value held by OpenNomos and forwarded for this request only. Plane/Jira/monday.com/Asana use their API token form; Planner uses tenant_id:client_id:client_secret. Gateways and intermediaries must not persist or log this header. TLS is required.", min_length=1),
+    cursor: Annotated[Optional[StrictStr], Field(description="Opaque continuation token; omit for the first page.")] = Query(None, description="Opaque continuation token; omit for the first page.", alias="cursor"),
     limit: Optional[Annotated[int, Field(le=200, ge=1)]] = Query(50, description="", alias="limit", ge=1, le=200),
-    x_pm_provider_base_url: Annotated[Optional[str], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
-    x_pm_provider_mode: Annotated[Optional[str], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
+    x_pm_provider_base_url: Annotated[Optional[StrictStr], Field(description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults.")] = Header(None, description="Optional provider API base URL from the OpenNomos credential record. Jira requires it; Plane, Planner, monday.com, and Asana use their documented defaults."),
+    x_pm_provider_mode: Annotated[Optional[StrictStr], Field(description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira's `sdk` and `http-client` modes). Defaults to `http-client`.")] = Header('http-client', description="Optional provider implementation mode. Used by providers with more than one backend (for example Jira&#39;s &#x60;sdk&#x60; and &#x60;http-client&#x60; modes). Defaults to &#x60;http-client&#x60;."),
     token_bearerAuth: TokenModel = Security(
         get_token_bearerAuth
     ),
