@@ -86,6 +86,7 @@ _PROVIDER_NAMES = {
     "clickup": "ClickUp",
     "trello": "Trello",
     "basecamp": "Basecamp",
+    "celoxis": "Celoxis",
     "github": "GitHub",
 }
 

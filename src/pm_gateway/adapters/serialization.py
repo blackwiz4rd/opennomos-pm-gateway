@@ -218,6 +218,7 @@ def as_work_item(
         "clickup": "task",
         "trello": "card",
         "basecamp": "todo",
+        "celoxis": "task",
         "github": "issue",
     }[provider]
     url_base = base_url

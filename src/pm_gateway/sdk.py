@@ -39,6 +39,7 @@ class Provider(str, Enum):
     CLICKUP = "clickup"
     TRELLO = "trello"
     BASECAMP = "basecamp"
+    CELOXIS = "celoxis"
     GITHUB = "github"
     COMPLIANT = "compliant"
 

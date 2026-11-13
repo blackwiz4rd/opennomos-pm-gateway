@@ -39,6 +39,7 @@ _DEFAULT_ALLOWED_HOSTS = {
     "clickup": ("api.clickup.com",),
     "trello": ("api.trello.com",),
     "basecamp": ("3.basecampapi.com", "basecampapi.com"),
+    "celoxis": ("*.celoxis.com",),
     "github": ("api.github.com",),
     "compliant": (),
 }
@@ -250,7 +251,7 @@ def validate_native_identifiers(provider: str, params: Mapping[str, Any]) -> Non
         for value in values:
             validate_native_id(value, "iteration_ids")
 
-    if provider in {"plane", "planner", "monday", "asana", "clickup", "trello", "basecamp", "github"}:
+    if provider in {"plane", "planner", "monday", "asana", "clickup", "trello", "basecamp", "celoxis", "github"}:
         workspace_id = params.get("workspaceId", params.get("workspace_id"))
         if workspace_id is not None:
             validate_native_id(workspace_id, "workspaceId")

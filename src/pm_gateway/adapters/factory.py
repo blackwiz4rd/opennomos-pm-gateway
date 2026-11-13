@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from pm_gateway.adapters.asana import AsanaProvider
 from pm_gateway.adapters.basecamp import BasecampProvider
+from pm_gateway.adapters.celoxis import CeloxisProvider
 from pm_gateway.adapters.clickup import ClickUpProvider
 from pm_gateway.adapters.compliant import CompliantProvider
 from pm_gateway.adapters.github import GitHubProvider
@@ -20,7 +21,7 @@ from pm_gateway.security import (
 )
 
 SUPPORTED_PROVIDERS = frozenset(
-    {"plane", "jira", "planner", "monday", "asana", "clickup", "trello", "basecamp", "github", "compliant"}
+    {"plane", "jira", "planner", "monday", "asana", "clickup", "trello", "basecamp", "celoxis", "github", "compliant"}
 )
 
 
@@ -58,6 +59,7 @@ async def open_provider(
         "clickup": ClickUpProvider,
         "trello": TrelloProvider,
         "basecamp": BasecampProvider,
+        "celoxis": CeloxisProvider,
         "github": GitHubProvider,
         "compliant": CompliantProvider,
     }[normalized]
