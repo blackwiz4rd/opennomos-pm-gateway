@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from pm_gateway.generated.providers.basecamp.models.schedule_attributes import ScheduleAttributes
 from typing import Optional, Set
@@ -33,7 +33,10 @@ class UpdateProjectRequestContent(BaseModel):
     admissions: Optional[StrictStr] = Field(default=None, description="invite|employee|team")
     schedule_attributes: Optional[ScheduleAttributes] = None
     wallpaper_mode: Optional[StrictStr] = Field(default=None, description="How the project's wallpaper is laid out. Changes only the layout of a wallpaper already attached; UpdateProjectWallpaper uploads one.")
-    __properties: ClassVar[List[str]] = ["name", "description", "admissions", "schedule_attributes", "wallpaper_mode"]
+    color: Optional[StrictStr] = Field(default=None, description="The project's color, used for it on calendars: white, red, orange, yellow, green, blue, aqua, purple, gray, pink or brown. An empty string clears it, and Basecamp derives one from the project's name again. A value outside the enum answers a server error, not a validation error. The `color` a project read returns is something else: the caller's own color for the project on their home screen, null unless they set one.")
+    purpose: Optional[StrictStr] = Field(default=None, description="What kind of project it is: `topic` (a regular project), `team`, or `company_hq` (the account's Company HQ). Changing a `topic` to anything else deletes the project's start and end dates. An account has at most one `company_hq`; asking for a second answers 422. BC3's enum also has `guide`, which marks a project as a sample nobody can edit afterwards, so it isn't offered.")
+    timesheet_enabled: Optional[StrictBool] = Field(default=None, description="Turn the project's timesheet on or off. Basecamp ignores this when the caller can't use timesheets (the account lacks them, or the caller is a client).")
+    __properties: ClassVar[List[str]] = ["name", "description", "admissions", "schedule_attributes", "wallpaper_mode", "color", "purpose", "timesheet_enabled"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -93,7 +96,10 @@ class UpdateProjectRequestContent(BaseModel):
             "description": obj.get("description"),
             "admissions": obj.get("admissions"),
             "schedule_attributes": ScheduleAttributes.from_dict(obj["schedule_attributes"]) if obj.get("schedule_attributes") is not None else None,
-            "wallpaper_mode": obj.get("wallpaper_mode")
+            "wallpaper_mode": obj.get("wallpaper_mode"),
+            "color": obj.get("color"),
+            "purpose": obj.get("purpose"),
+            "timesheet_enabled": obj.get("timesheet_enabled")
         })
         return _obj
 

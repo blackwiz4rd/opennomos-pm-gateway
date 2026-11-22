@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -31,7 +31,8 @@ class UpdateCardRequestContent(BaseModel):
     content: Optional[StrictStr] = None
     due_on: Optional[StrictStr] = None
     assignee_ids: Optional[List[StrictInt]] = None
-    __properties: ClassVar[List[str]] = ["title", "content", "due_on", "assignee_ids"]
+    notify: Optional[StrictBool] = Field(default=None, description="Notify people newly assigned through assignee_ids in this same request. Off unless true, and has no effect without assignee_ids: people already assigned are not notified again.")
+    __properties: ClassVar[List[str]] = ["title", "content", "due_on", "assignee_ids", "notify"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -87,7 +88,8 @@ class UpdateCardRequestContent(BaseModel):
             "title": obj.get("title"),
             "content": obj.get("content"),
             "due_on": obj.get("due_on"),
-            "assignee_ids": obj.get("assignee_ids")
+            "assignee_ids": obj.get("assignee_ids"),
+            "notify": obj.get("notify")
         })
         return _obj
 

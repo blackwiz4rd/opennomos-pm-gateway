@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -30,7 +30,9 @@ class ProjectConstructionAttributes(BaseModel):
     name: StrictStr
     description: Optional[StrictStr] = None
     start_date: Optional[StrictStr] = Field(default=None, description="Date the new project starts on. Template dates are relative to the start of the template's first week, and template weeks start on a Sunday, so the project's dates are anchored to the Sunday on or before this date. Omitted, they are anchored to the week in which the construction is processed.")
-    __properties: ClassVar[List[str]] = ["name", "description", "start_date"]
+    admissions: Optional[StrictStr] = Field(default=None, description="Who can join the new project: invite, employee or team. Basecamp stores this with the construction and applies it when the project is built, so a value outside the enum isn't refused up front: the construction fails.")
+    timesheet_enabled: Optional[StrictBool] = Field(default=None, description="Turn on the new project's timesheet. Basecamp ignores this when the caller can't use timesheets (the account lacks them, or the caller is a client).")
+    __properties: ClassVar[List[str]] = ["name", "description", "start_date", "admissions", "timesheet_enabled"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -85,7 +87,9 @@ class ProjectConstructionAttributes(BaseModel):
         _obj = cls.model_validate({
             "name": obj.get("name"),
             "description": obj.get("description"),
-            "start_date": obj.get("start_date")
+            "start_date": obj.get("start_date"),
+            "admissions": obj.get("admissions"),
+            "timesheet_enabled": obj.get("timesheet_enabled")
         })
         return _obj
 

@@ -28,7 +28,7 @@ class PullRequestReviewCommentCopilotCodeReviewSourcesInner(BaseModel):
     PullRequestReviewCommentCopilotCodeReviewSourcesInner
     """ # noqa: E501
     kind: StrictStr = Field(description="The kind of contributing source.")
-    name: StrictStr = Field(description="The reported source name, or \"custom instructions\" for CUSTOM_INSTRUCTIONS.")
+    name: StrictStr = Field(description="The reported source name, or \"custom instructions\" for CUSTOM_INSTRUCTIONS. Copilot Dreaming's reviewer agent and checks skill are reported as one SKILL source named \"Copilot dreaming\".")
     path: Optional[StrictStr] = Field(default=None, description="The validated repository-relative source path, if available. Commit OIDs are not exposed.")
     __properties: ClassVar[List[str]] = ["kind", "name", "path"]
 

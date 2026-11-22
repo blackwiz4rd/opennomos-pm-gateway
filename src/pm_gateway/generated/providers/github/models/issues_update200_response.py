@@ -26,6 +26,7 @@ from pm_gateway.generated.providers.github.models.issue_dependencies_summary imp
 from pm_gateway.generated.providers.github.models.issue_field_value import IssueFieldValue
 from pm_gateway.generated.providers.github.models.issue_labels_inner import IssueLabelsInner
 from pm_gateway.generated.providers.github.models.issue_pull_request import IssuePullRequest
+from pm_gateway.generated.providers.github.models.issue_status import IssueStatus
 from pm_gateway.generated.providers.github.models.issue_type import IssueType
 from pm_gateway.generated.providers.github.models.issues_update200_response_all_of_suggestions import IssuesUpdate200ResponseAllOfSuggestions
 from pm_gateway.generated.providers.github.models.nullable_issue_comment import NullableIssueComment
@@ -53,6 +54,7 @@ class IssuesUpdate200Response(BaseModel):
     html_url: StrictStr
     number: StrictInt = Field(description="Number uniquely identifying the issue within its repository", json_schema_extra={"examples": [42]})
     state: StrictStr = Field(description="State of the issue; either 'open' or 'closed'", json_schema_extra={"examples": ["open"]})
+    status: Optional[IssueStatus] = None
     state_reason: Optional[StrictStr] = Field(default=None, description="The reason for the current state", json_schema_extra={"examples": ["not_planned"]})
     title: StrictStr = Field(description="Title of the issue", json_schema_extra={"examples": ["Widget creation fails in Safari on OS X 10.8"]})
     body: Optional[StrictStr] = Field(default=None, description="Contents of the issue", json_schema_extra={"examples": ["It looks like the new widget form is broken on Safari. When I try and create the widget, Safari crashes. This is reproducible on 10.8, but not 10.9. Maybe a browser bug?"]})
@@ -84,7 +86,7 @@ class IssuesUpdate200Response(BaseModel):
     issue_dependencies_summary: Optional[IssueDependenciesSummary] = None
     issue_field_values: Optional[List[IssueFieldValue]] = None
     suggestions: Optional[IssuesUpdate200ResponseAllOfSuggestions] = None
-    __properties: ClassVar[List[str]] = ["id", "node_id", "url", "repository_url", "labels_url", "comments_url", "events_url", "html_url", "number", "state", "state_reason", "title", "body", "user", "labels", "assignee", "assignees", "milestone", "locked", "active_lock_reason", "comments", "pull_request", "closed_at", "created_at", "updated_at", "draft", "closed_by", "body_html", "body_text", "timeline_url", "type", "repository", "performed_via_github_app", "author_association", "reactions", "sub_issues_summary", "parent_issue_url", "pinned_comment", "issue_dependencies_summary", "issue_field_values", "suggestions"]
+    __properties: ClassVar[List[str]] = ["id", "node_id", "url", "repository_url", "labels_url", "comments_url", "events_url", "html_url", "number", "state", "status", "state_reason", "title", "body", "user", "labels", "assignee", "assignees", "milestone", "locked", "active_lock_reason", "comments", "pull_request", "closed_at", "created_at", "updated_at", "draft", "closed_by", "body_html", "body_text", "timeline_url", "type", "repository", "performed_via_github_app", "author_association", "reactions", "sub_issues_summary", "parent_issue_url", "pinned_comment", "issue_dependencies_summary", "issue_field_values", "suggestions"]
 
     @field_validator('state_reason')
     def state_reason_validate_enum(cls, value):
@@ -135,6 +137,9 @@ class IssuesUpdate200Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of status
+        if self.status:
+            _dict['status'] = self.status.to_dict()
         # override the default output from pydantic by calling `to_dict()` of user
         if self.user:
             _dict['user'] = self.user.to_dict()
@@ -192,6 +197,11 @@ class IssuesUpdate200Response(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of suggestions
         if self.suggestions:
             _dict['suggestions'] = self.suggestions.to_dict()
+        # set to None if status (nullable) is None
+        # and model_fields_set contains the field
+        if self.status is None and "status" in self.model_fields_set:
+            _dict['status'] = None
+
         # set to None if state_reason (nullable) is None
         # and model_fields_set contains the field
         if self.state_reason is None and "state_reason" in self.model_fields_set:
@@ -274,6 +284,7 @@ class IssuesUpdate200Response(BaseModel):
             "html_url": obj.get("html_url"),
             "number": obj.get("number"),
             "state": obj.get("state"),
+            "status": IssueStatus.from_dict(obj["status"]) if obj.get("status") is not None else None,
             "state_reason": obj.get("state_reason"),
             "title": obj.get("title"),
             "body": obj.get("body"),

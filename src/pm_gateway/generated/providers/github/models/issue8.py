@@ -27,6 +27,7 @@ from pm_gateway.generated.providers.github.models.issue_type import IssueType
 from pm_gateway.generated.providers.github.models.label2 import Label2
 from pm_gateway.generated.providers.github.models.milestone import Milestone
 from pm_gateway.generated.providers.github.models.nullable_issue_comment import NullableIssueComment
+from pm_gateway.generated.providers.github.models.planning_status import PlanningStatus
 from pm_gateway.generated.providers.github.models.reactions import Reactions
 from pm_gateway.generated.providers.github.models.sub_issues_summary import SubIssuesSummary
 from pm_gateway.generated.providers.github.models.user1 import User1
@@ -68,6 +69,7 @@ class Issue8(BaseModel):
     sub_issues_summary: Optional[SubIssuesSummary] = None
     issue_dependencies_summary: Optional[IssueDependenciesSummary] = None
     issue_field_values: Optional[List[IssueFieldValue]] = None
+    status: Optional[PlanningStatus] = None
     state: StrictStr = Field(description="State of the issue; either 'open' or 'closed'")
     state_reason: Optional[StrictStr] = None
     timeline_url: Optional[StrictStr] = None
@@ -76,7 +78,7 @@ class Issue8(BaseModel):
     url: StrictStr = Field(description="URL for the issue")
     user: Optional[User2]
     type: Optional[IssueType] = None
-    __properties: ClassVar[List[str]] = ["active_lock_reason", "assignee", "assignees", "author_association", "body", "closed_at", "comments", "comments_url", "created_at", "draft", "events_url", "html_url", "id", "labels", "labels_url", "locked", "milestone", "node_id", "number", "performed_via_github_app", "pull_request", "reactions", "repository_url", "pinned_comment", "sub_issues_summary", "issue_dependencies_summary", "issue_field_values", "state", "state_reason", "timeline_url", "title", "updated_at", "url", "user", "type"]
+    __properties: ClassVar[List[str]] = ["active_lock_reason", "assignee", "assignees", "author_association", "body", "closed_at", "comments", "comments_url", "created_at", "draft", "events_url", "html_url", "id", "labels", "labels_url", "locked", "milestone", "node_id", "number", "performed_via_github_app", "pull_request", "reactions", "repository_url", "pinned_comment", "sub_issues_summary", "issue_dependencies_summary", "issue_field_values", "status", "state", "state_reason", "timeline_url", "title", "updated_at", "url", "user", "type"]
 
     @field_validator('active_lock_reason')
     def active_lock_reason_validate_enum(cls, value):
@@ -183,6 +185,9 @@ class Issue8(BaseModel):
             for _item_issue_field_values in self.issue_field_values:
                 _items.append(_item_issue_field_values.to_dict() if _item_issue_field_values is not None else None)
             _dict['issue_field_values'] = _items
+        # override the default output from pydantic by calling `to_dict()` of status
+        if self.status:
+            _dict['status'] = self.status.to_dict()
         # override the default output from pydantic by calling `to_dict()` of user
         if self.user:
             _dict['user'] = self.user.to_dict()
@@ -223,6 +228,11 @@ class Issue8(BaseModel):
         # and model_fields_set contains the field
         if self.pinned_comment is None and "pinned_comment" in self.model_fields_set:
             _dict['pinned_comment'] = None
+
+        # set to None if status (nullable) is None
+        # and model_fields_set contains the field
+        if self.status is None and "status" in self.model_fields_set:
+            _dict['status'] = None
 
         # set to None if state_reason (nullable) is None
         # and model_fields_set contains the field
@@ -278,6 +288,7 @@ class Issue8(BaseModel):
             "sub_issues_summary": SubIssuesSummary.from_dict(obj["sub_issues_summary"]) if obj.get("sub_issues_summary") is not None else None,
             "issue_dependencies_summary": IssueDependenciesSummary.from_dict(obj["issue_dependencies_summary"]) if obj.get("issue_dependencies_summary") is not None else None,
             "issue_field_values": [IssueFieldValue.from_dict(_item) for _item in obj["issue_field_values"]] if obj.get("issue_field_values") is not None else None,
+            "status": PlanningStatus.from_dict(obj["status"]) if obj.get("status") is not None else None,
             "state": obj.get("state"),
             "state_reason": obj.get("state_reason"),
             "timeline_url": obj.get("timeline_url"),

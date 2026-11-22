@@ -33,7 +33,8 @@ class RepositoryCopilotCodeReviewSettings(BaseModel):
     severity_filter: StrictStr = Field(description="Which review comment severities Copilot code review leaves out. `no_filter` keeps every comment, `low` leaves out low-severity comments, and `low_and_medium` leaves out low- and medium-severity comments.")
     custom_instructions_enabled: StrictBool = Field(description="Whether reviews use the repository's custom instructions.")
     mcp_enabled: StrictBool = Field(description="Whether reviews can use MCP servers.")
-    __properties: ClassVar[List[str]] = ["review_effort", "available_review_efforts", "severity_filter", "custom_instructions_enabled", "mcp_enabled"]
+    cross_repo_context_enabled: StrictBool = Field(description="Whether reviews can use public repository search.")
+    __properties: ClassVar[List[str]] = ["review_effort", "available_review_efforts", "severity_filter", "custom_instructions_enabled", "mcp_enabled", "cross_repo_context_enabled"]
 
     @field_validator('severity_filter')
     def severity_filter_validate_enum(cls, value):
@@ -100,7 +101,8 @@ class RepositoryCopilotCodeReviewSettings(BaseModel):
             "available_review_efforts": obj.get("available_review_efforts"),
             "severity_filter": obj.get("severity_filter"),
             "custom_instructions_enabled": obj.get("custom_instructions_enabled"),
-            "mcp_enabled": obj.get("mcp_enabled")
+            "mcp_enabled": obj.get("mcp_enabled"),
+            "cross_repo_context_enabled": obj.get("cross_repo_context_enabled")
         })
         return _obj
 

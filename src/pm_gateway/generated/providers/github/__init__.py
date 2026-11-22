@@ -533,6 +533,7 @@ __all__ = [
     "IssueReference",
     "IssueSearchResultItem",
     "IssueSearchResultItemLabelsInner",
+    "IssueStatus",
     "IssueSuggestion",
     "IssueSuggestionTargetValue",
     "IssueType",
@@ -713,6 +714,7 @@ __all__ = [
     "PersonalAccessTokenRequestPermissionsAdded",
     "PersonalAccessTokenRequestPermissionsResult",
     "PersonalAccessTokenRequestPermissionsUpgraded",
+    "PlanningStatus",
     "PorterAuthor",
     "PorterLargeFile",
     "PrivateUser",
@@ -1326,6 +1328,11 @@ __all__ = [
     "WebhookIssuesOpenedChanges",
     "WebhookIssuesPinned",
     "WebhookIssuesReopened",
+    "WebhookIssuesStatusChanged",
+    "WebhookIssuesStatusChangedChanges",
+    "WebhookIssuesStatusChangedChangesState",
+    "WebhookIssuesStatusChangedChangesStateReason",
+    "WebhookIssuesStatusChangedChangesStatus",
     "WebhookIssuesTransferred",
     "WebhookIssuesTransferredChanges",
     "WebhookIssuesTyped",
@@ -2240,6 +2247,7 @@ from pm_gateway.generated.providers.github.models.issue_pull_request import Issu
 from pm_gateway.generated.providers.github.models.issue_reference import IssueReference as IssueReference
 from pm_gateway.generated.providers.github.models.issue_search_result_item import IssueSearchResultItem as IssueSearchResultItem
 from pm_gateway.generated.providers.github.models.issue_search_result_item_labels_inner import IssueSearchResultItemLabelsInner as IssueSearchResultItemLabelsInner
+from pm_gateway.generated.providers.github.models.issue_status import IssueStatus as IssueStatus
 from pm_gateway.generated.providers.github.models.issue_suggestion import IssueSuggestion as IssueSuggestion
 from pm_gateway.generated.providers.github.models.issue_suggestion_target_value import IssueSuggestionTargetValue as IssueSuggestionTargetValue
 from pm_gateway.generated.providers.github.models.issue_type import IssueType as IssueType
@@ -2420,6 +2428,7 @@ from pm_gateway.generated.providers.github.models.personal_access_token_request 
 from pm_gateway.generated.providers.github.models.personal_access_token_request_permissions_added import PersonalAccessTokenRequestPermissionsAdded as PersonalAccessTokenRequestPermissionsAdded
 from pm_gateway.generated.providers.github.models.personal_access_token_request_permissions_result import PersonalAccessTokenRequestPermissionsResult as PersonalAccessTokenRequestPermissionsResult
 from pm_gateway.generated.providers.github.models.personal_access_token_request_permissions_upgraded import PersonalAccessTokenRequestPermissionsUpgraded as PersonalAccessTokenRequestPermissionsUpgraded
+from pm_gateway.generated.providers.github.models.planning_status import PlanningStatus as PlanningStatus
 from pm_gateway.generated.providers.github.models.porter_author import PorterAuthor as PorterAuthor
 from pm_gateway.generated.providers.github.models.porter_large_file import PorterLargeFile as PorterLargeFile
 from pm_gateway.generated.providers.github.models.private_user import PrivateUser as PrivateUser
@@ -3033,6 +3042,11 @@ from pm_gateway.generated.providers.github.models.webhook_issues_opened import W
 from pm_gateway.generated.providers.github.models.webhook_issues_opened_changes import WebhookIssuesOpenedChanges as WebhookIssuesOpenedChanges
 from pm_gateway.generated.providers.github.models.webhook_issues_pinned import WebhookIssuesPinned as WebhookIssuesPinned
 from pm_gateway.generated.providers.github.models.webhook_issues_reopened import WebhookIssuesReopened as WebhookIssuesReopened
+from pm_gateway.generated.providers.github.models.webhook_issues_status_changed import WebhookIssuesStatusChanged as WebhookIssuesStatusChanged
+from pm_gateway.generated.providers.github.models.webhook_issues_status_changed_changes import WebhookIssuesStatusChangedChanges as WebhookIssuesStatusChangedChanges
+from pm_gateway.generated.providers.github.models.webhook_issues_status_changed_changes_state import WebhookIssuesStatusChangedChangesState as WebhookIssuesStatusChangedChangesState
+from pm_gateway.generated.providers.github.models.webhook_issues_status_changed_changes_state_reason import WebhookIssuesStatusChangedChangesStateReason as WebhookIssuesStatusChangedChangesStateReason
+from pm_gateway.generated.providers.github.models.webhook_issues_status_changed_changes_status import WebhookIssuesStatusChangedChangesStatus as WebhookIssuesStatusChangedChangesStatus
 from pm_gateway.generated.providers.github.models.webhook_issues_transferred import WebhookIssuesTransferred as WebhookIssuesTransferred
 from pm_gateway.generated.providers.github.models.webhook_issues_transferred_changes import WebhookIssuesTransferredChanges as WebhookIssuesTransferredChanges
 from pm_gateway.generated.providers.github.models.webhook_issues_typed import WebhookIssuesTyped as WebhookIssuesTyped

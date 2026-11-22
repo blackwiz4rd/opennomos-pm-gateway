@@ -23,6 +23,7 @@ from pm_gateway.generated.providers.github.models.issue_dependencies_summary imp
 from pm_gateway.generated.providers.github.models.issue_field_value import IssueFieldValue
 from pm_gateway.generated.providers.github.models.issue_type import IssueType
 from pm_gateway.generated.providers.github.models.nullable_issue_comment import NullableIssueComment
+from pm_gateway.generated.providers.github.models.planning_status import PlanningStatus
 from pm_gateway.generated.providers.github.models.sub_issues_summary import SubIssuesSummary
 from pm_gateway.generated.providers.github.models.webhook_issue_comment_created_issue_all_of_reactions import WebhookIssueCommentCreatedIssueAllOfReactions
 from pm_gateway.generated.providers.github.models.webhook_issue_comment_deleted_issue_all_of_user import WebhookIssueCommentDeletedIssueAllOfUser
@@ -63,6 +64,7 @@ class WebhookIssuesClosedIssue(BaseModel):
     sub_issues_summary: Optional[SubIssuesSummary] = None
     issue_dependencies_summary: Optional[IssueDependenciesSummary] = None
     issue_field_values: Optional[List[IssueFieldValue]] = None
+    status: Optional[PlanningStatus] = None
     state: StrictStr
     state_reason: Optional[StrictStr] = None
     timeline_url: Optional[StrictStr] = None
@@ -71,7 +73,7 @@ class WebhookIssuesClosedIssue(BaseModel):
     updated_at: StrictStr
     url: StrictStr
     user: WebhookIssueCommentDeletedIssueAllOfUser
-    __properties: ClassVar[List[str]] = ["active_lock_reason", "assignee", "assignees", "author_association", "body", "closed_at", "comments", "comments_url", "created_at", "draft", "events_url", "html_url", "id", "labels", "labels_url", "locked", "milestone", "node_id", "number", "performed_via_github_app", "pull_request", "reactions", "repository_url", "pinned_comment", "sub_issues_summary", "issue_dependencies_summary", "issue_field_values", "state", "state_reason", "timeline_url", "title", "type", "updated_at", "url", "user"]
+    __properties: ClassVar[List[str]] = ["active_lock_reason", "assignee", "assignees", "author_association", "body", "closed_at", "comments", "comments_url", "created_at", "draft", "events_url", "html_url", "id", "labels", "labels_url", "locked", "milestone", "node_id", "number", "performed_via_github_app", "pull_request", "reactions", "repository_url", "pinned_comment", "sub_issues_summary", "issue_dependencies_summary", "issue_field_values", "status", "state", "state_reason", "timeline_url", "title", "type", "updated_at", "url", "user"]
 
     @field_validator('state')
     def state_validate_enum(cls, value):
@@ -146,6 +148,9 @@ class WebhookIssuesClosedIssue(BaseModel):
             for _item_issue_field_values in self.issue_field_values:
                 _items.append(_item_issue_field_values.to_dict() if _item_issue_field_values is not None else None)
             _dict['issue_field_values'] = _items
+        # override the default output from pydantic by calling `to_dict()` of status
+        if self.status:
+            _dict['status'] = self.status.to_dict()
         # override the default output from pydantic by calling `to_dict()` of type
         if self.type:
             _dict['type'] = self.type.to_dict()
@@ -186,6 +191,11 @@ class WebhookIssuesClosedIssue(BaseModel):
         # and model_fields_set contains the field
         if self.pinned_comment is None and "pinned_comment" in self.model_fields_set:
             _dict['pinned_comment'] = None
+
+        # set to None if status (nullable) is None
+        # and model_fields_set contains the field
+        if self.status is None and "status" in self.model_fields_set:
+            _dict['status'] = None
 
         # set to None if state_reason (nullable) is None
         # and model_fields_set contains the field
@@ -236,6 +246,7 @@ class WebhookIssuesClosedIssue(BaseModel):
             "sub_issues_summary": SubIssuesSummary.from_dict(obj["sub_issues_summary"]) if obj.get("sub_issues_summary") is not None else None,
             "issue_dependencies_summary": IssueDependenciesSummary.from_dict(obj["issue_dependencies_summary"]) if obj.get("issue_dependencies_summary") is not None else None,
             "issue_field_values": [IssueFieldValue.from_dict(_item) for _item in obj["issue_field_values"]] if obj.get("issue_field_values") is not None else None,
+            "status": PlanningStatus.from_dict(obj["status"]) if obj.get("status") is not None else None,
             "state": obj.get("state"),
             "state_reason": obj.get("state_reason"),
             "timeline_url": obj.get("timeline_url"),

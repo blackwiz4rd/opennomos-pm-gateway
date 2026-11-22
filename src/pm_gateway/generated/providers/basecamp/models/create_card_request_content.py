@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictBool, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -30,8 +30,9 @@ class CreateCardRequestContent(BaseModel):
     title: StrictStr
     content: Optional[StrictStr] = None
     due_on: Optional[StrictStr] = None
-    notify: Optional[StrictBool] = None
-    __properties: ClassVar[List[str]] = ["title", "content", "due_on", "notify"]
+    assignee_ids: Optional[List[StrictInt]] = Field(default=None, description="People to assign to the new card. BC3 keeps only the ids it finds among the card table's reachable people and silently drops the rest.")
+    notify: Optional[StrictBool] = Field(default=None, description="Notify the people assigned through assignee_ids. Off unless true.")
+    __properties: ClassVar[List[str]] = ["title", "content", "due_on", "assignee_ids", "notify"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -87,6 +88,7 @@ class CreateCardRequestContent(BaseModel):
             "title": obj.get("title"),
             "content": obj.get("content"),
             "due_on": obj.get("due_on"),
+            "assignee_ids": obj.get("assignee_ids"),
             "notify": obj.get("notify")
         })
         return _obj

@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -29,7 +29,12 @@ class CreateProjectRequestContent(BaseModel):
     """ # noqa: E501
     name: StrictStr
     description: Optional[StrictStr] = None
-    __properties: ClassVar[List[str]] = ["name", "description"]
+    color: Optional[StrictStr] = Field(default=None, description="The project's color, used for it on calendars: white, red, orange, yellow, green, blue, aqua, purple, gray, pink or brown. Omitted, Basecamp derives one from the project's name. Basecamp answers a value outside the enum with a server error, not a validation error.")
+    purpose: Optional[StrictStr] = Field(default=None, description="What kind of project it is: `topic` (a regular project, the default), `team`, or `company_hq` (the account's Company HQ, at most one per account; a second answers 422). BC3's enum also has `guide`, which marks a project as a sample nobody can edit afterwards, so it isn't offered.")
+    admissions: Optional[StrictStr] = Field(default=None, description="invite|employee|team")
+    timesheet_enabled: Optional[StrictBool] = Field(default=None, description="Turn on the project's timesheet. Basecamp ignores this when the caller can't use timesheets (the account lacks them, or the caller is a client).")
+    wallpaper_mode: Optional[StrictStr] = Field(default=None, description="How a wallpaper uploaded later is laid out. UpdateProjectWallpaper uploads one.")
+    __properties: ClassVar[List[str]] = ["name", "description", "color", "purpose", "admissions", "timesheet_enabled", "wallpaper_mode"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -83,7 +88,12 @@ class CreateProjectRequestContent(BaseModel):
 
         _obj = cls.model_validate({
             "name": obj.get("name"),
-            "description": obj.get("description")
+            "description": obj.get("description"),
+            "color": obj.get("color"),
+            "purpose": obj.get("purpose"),
+            "admissions": obj.get("admissions"),
+            "timesheet_enabled": obj.get("timesheet_enabled"),
+            "wallpaper_mode": obj.get("wallpaper_mode")
         })
         return _obj
 

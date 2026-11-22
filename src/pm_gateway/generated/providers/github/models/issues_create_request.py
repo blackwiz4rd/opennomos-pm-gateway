@@ -33,6 +33,7 @@ class IssuesCreateRequest(BaseModel):
     """ # noqa: E501
     title: IssuesCreateRequestTitle
     body: Optional[StrictStr] = Field(default=None, description="The contents of the issue.")
+    status: Optional[StrictStr] = Field(default=None, description="The initial status of the issue. Can be `Backlog`, `Todo`, `In progress`, or `In review`. If omitted, the issue starts in `Backlog`. If you do not have permission to set the status, the supplied value is ignored and the issue starts in `Backlog`. Cannot be `null` or an empty string. Ignored when issue statuses aren't available in the repository. Issue statuses are in preview and only available to accounts enrolled in the preview.", json_schema_extra={"examples": ["In progress"]})
     assignee: Optional[StrictStr] = Field(default=None, description="Login for the user that this issue should be assigned to. _NOTE: Only users with push access can set the assignee for new issues. The assignee is silently dropped otherwise. **This field is closing down.**_")
     milestone: Optional[IssuesCreateRequestMilestone] = None
     labels: Optional[List[IssuesCreateRequestLabelsInner]] = Field(default=None, description="Labels to associate with this issue. _NOTE: Only users with push access can set labels for new issues. Labels are silently dropped otherwise._")
@@ -40,7 +41,7 @@ class IssuesCreateRequest(BaseModel):
     issue_field_values: Optional[List[IssuesCreateRequestIssueFieldValuesInner]] = Field(default=None, description="An array of issue field values to set on this issue. Each field value must include the field ID and the value to set. Issue fields must be enabled for the repository owner. Field values are silently dropped otherwise.")
     type: Optional[StrictStr] = Field(default=None, description="The name of the issue type to associate with this issue. _NOTE: Only users with push access can set the type for new issues. The type is silently dropped otherwise._", json_schema_extra={"examples": ["Epic"]})
     parent_issue_id: Optional[StrictInt] = Field(default=None, description="The id of the parent issue to add this issue to as a sub-issue. _NOTE: Only users with triage access to both the parent issue's repository and this repository can set the parent issue._")
-    __properties: ClassVar[List[str]] = ["title", "body", "assignee", "milestone", "labels", "assignees", "issue_field_values", "type", "parent_issue_id"]
+    __properties: ClassVar[List[str]] = ["title", "body", "status", "assignee", "milestone", "labels", "assignees", "issue_field_values", "type", "parent_issue_id"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -128,6 +129,7 @@ class IssuesCreateRequest(BaseModel):
         _obj = cls.model_validate({
             "title": IssuesCreateRequestTitle.from_dict(obj["title"]) if obj.get("title") is not None else None,
             "body": obj.get("body"),
+            "status": obj.get("status"),
             "assignee": obj.get("assignee"),
             "milestone": IssuesCreateRequestMilestone.from_dict(obj["milestone"]) if obj.get("milestone") is not None else None,
             "labels": [IssuesCreateRequestLabelsInner.from_dict(_item) for _item in obj["labels"]] if obj.get("labels") is not None else None,

@@ -26,6 +26,7 @@ from pm_gateway.generated.providers.github.models.issue_dependencies_summary imp
 from pm_gateway.generated.providers.github.models.issue_field_value import IssueFieldValue
 from pm_gateway.generated.providers.github.models.issue_pull_request import IssuePullRequest
 from pm_gateway.generated.providers.github.models.issue_search_result_item_labels_inner import IssueSearchResultItemLabelsInner
+from pm_gateway.generated.providers.github.models.issue_status import IssueStatus
 from pm_gateway.generated.providers.github.models.issue_type import IssueType
 from pm_gateway.generated.providers.github.models.nullable_issue_comment import NullableIssueComment
 from pm_gateway.generated.providers.github.models.nullable_milestone import NullableMilestone
@@ -43,6 +44,7 @@ class IssueSearchResultItem(BaseModel):
     """
     Issue Search Result Item
     """ # noqa: E501
+    status: Optional[IssueStatus] = None
     url: StrictStr
     repository_url: StrictStr
     labels_url: StrictStr
@@ -83,7 +85,7 @@ class IssueSearchResultItem(BaseModel):
     performed_via_github_app: Optional[Integration] = None
     pinned_comment: Optional[NullableIssueComment] = None
     reactions: Optional[ReactionRollup] = None
-    __properties: ClassVar[List[str]] = ["url", "repository_url", "labels_url", "comments_url", "events_url", "html_url", "id", "node_id", "number", "title", "locked", "active_lock_reason", "assignees", "user", "labels", "sub_issues_summary", "issue_dependencies_summary", "issue_field_values", "state", "state_reason", "assignee", "milestone", "comments", "created_at", "updated_at", "closed_at", "text_matches", "pull_request", "body", "score", "author_association", "draft", "repository", "body_html", "body_text", "timeline_url", "type", "performed_via_github_app", "pinned_comment", "reactions"]
+    __properties: ClassVar[List[str]] = ["status", "url", "repository_url", "labels_url", "comments_url", "events_url", "html_url", "id", "node_id", "number", "title", "locked", "active_lock_reason", "assignees", "user", "labels", "sub_issues_summary", "issue_dependencies_summary", "issue_field_values", "state", "state_reason", "assignee", "milestone", "comments", "created_at", "updated_at", "closed_at", "text_matches", "pull_request", "body", "score", "author_association", "draft", "repository", "body_html", "body_text", "timeline_url", "type", "performed_via_github_app", "pinned_comment", "reactions"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -124,6 +126,9 @@ class IssueSearchResultItem(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of status
+        if self.status:
+            _dict['status'] = self.status.to_dict()
         # override the default output from pydantic by calling `to_dict()` of each item in assignees (list)
         _items = []
         if self.assignees:
@@ -181,6 +186,11 @@ class IssueSearchResultItem(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of reactions
         if self.reactions:
             _dict['reactions'] = self.reactions.to_dict()
+        # set to None if status (nullable) is None
+        # and model_fields_set contains the field
+        if self.status is None and "status" in self.model_fields_set:
+            _dict['status'] = None
+
         # set to None if active_lock_reason (nullable) is None
         # and model_fields_set contains the field
         if self.active_lock_reason is None and "active_lock_reason" in self.model_fields_set:
@@ -243,6 +253,7 @@ class IssueSearchResultItem(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "status": IssueStatus.from_dict(obj["status"]) if obj.get("status") is not None else None,
             "url": obj.get("url"),
             "repository_url": obj.get("repository_url"),
             "labels_url": obj.get("labels_url"),

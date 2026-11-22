@@ -4,7 +4,7 @@
       "status": "available",
       "url": "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
       "filename": "jira-openapi.json",
-      "sha256": "64e570a083e509e084ce9f810580b161127dd4e5804547d92afd6be28333fa34"
+      "sha256": "36a08f68d55c32f4e8dc257c1ca26f693d09e066a041dbf041ccb804dc52b971"
     },
     "confluence": {
       "status": "available",
@@ -27,13 +27,13 @@
       "status": "available",
       "url": "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml",
       "filename": "msgraph-v1.0-openapi.yaml",
-      "sha256": "eed44b45dd36f8489aabdffedd9de6e2f4e7613c1c7b2d884845e59652d489ff"
+      "sha256": "bd6385c5eb3df05a69da5f39359d9df61a44d0032d9b2234a97f4c29c0826d4d"
     },
     "asana": {
       "status": "available",
       "url": "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml",
       "filename": "asana-openapi.yaml",
-      "sha256": "bb9128f33708de453e1443c3631df21428b21a458c12b9587597566e9761620a"
+      "sha256": "e150fced56c97c4d9325bd77dd856f90ed1f74e3a82e4b9fdb41b6d79947db4a"
     },
     "clickup": {
       "status": "available",
@@ -51,13 +51,13 @@
       "status": "available",
       "url": "https://raw.githubusercontent.com/basecamp/basecamp-sdk/main/openapi.json",
       "filename": "basecamp-openapi.json",
-      "sha256": "ed54d6a8f2ba2bf5c0f52430a20c8b0104b9790f8e3cdf979c96d7b2f61d3102"
+      "sha256": "ca216ea9871159319e25199ba1070e7a850476020c212c132d56a003a2068933"
     },
     "github": {
       "status": "available",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "filename": "github-api.github.com-openapi.json",
-      "sha256": "2a93393cfccb292caeaa0ad9ab250900e361bda28f76743cc812dd0951cae8f0"
+      "sha256": "6d9bbb20d8865b01464028937f2403954ad46598b4ebd3513dcb1a15b1a84aa7"
     }
   }
 }

@@ -37,6 +37,7 @@ class IssuesUpdateRequest(BaseModel):
     body: Optional[StrictStr] = Field(default=None, description="The contents of the issue.")
     assignee: Optional[StrictStr] = Field(default=None, description="Username to assign to this issue. **This field is closing down.**")
     state: Optional[StrictStr] = Field(default=None, description="The open or closed state of the issue.")
+    status: Optional[StrictStr] = Field(default=None, description="The status to give the issue. Can be `Backlog`, `Todo`, `In progress`, `In review`, `Done`, `Not planned`, or `Duplicate`. If omitted, the current status is preserved unless `state` or `state_reason` changes. Setting a status also updates `state` and `state_reason` as needed. If provided, `state` and `state_reason` must be consistent with the requested status. Changing the status to `Duplicate` requires `duplicate_issue_id`. Cannot be `null` or an empty string. The status and other applied field changes are saved together. If the status cannot be saved, those field changes are rolled back. Ignored when issue statuses aren't available in the repository. Issue statuses are in preview and only available to accounts enrolled in the preview.", json_schema_extra={"examples": ["In progress"]})
     state_reason: Optional[StrictStr] = Field(default=None, description="The reason for the state change. Ignored unless `state` is changed.", json_schema_extra={"examples": ["not_planned"]})
     duplicate_issue_id: Optional[StrictInt] = Field(default=None, description="The ID of the issue that this issue duplicates, used when marking this issue as a duplicate with `status: Duplicate` or `state_reason: duplicate`. The issue must exist and be accessible to the authenticated user.")
     milestone: Optional[IssuesUpdateRequestMilestone] = None
@@ -44,7 +45,7 @@ class IssuesUpdateRequest(BaseModel):
     assignees: Optional[List[IssuesUpdateRequestAssigneesInner]] = Field(default=None, description="Usernames to assign to this issue. Pass one or more user logins to _replace_ the set of assignees on this issue. Send an empty array (`[]`) to clear all assignees from the issue. Only users with push access can set assignees for new issues. Without push access to the repository, assignee changes are silently dropped.")
     issue_field_values: Optional[List[IssuesUpdateRequestIssueFieldValuesInner]] = Field(default=None, description="An array of issue field values to set on this issue. Each field value must include the field ID and the value to set. Only users with push access can set field values for issues")
     type: Optional[IssuesUpdateRequestType] = None
-    __properties: ClassVar[List[str]] = ["title", "body", "assignee", "state", "state_reason", "duplicate_issue_id", "milestone", "labels", "assignees", "issue_field_values", "type"]
+    __properties: ClassVar[List[str]] = ["title", "body", "assignee", "state", "status", "state_reason", "duplicate_issue_id", "milestone", "labels", "assignees", "issue_field_values", "type"]
 
     @field_validator('state')
     def state_validate_enum(cls, value):
@@ -178,6 +179,7 @@ class IssuesUpdateRequest(BaseModel):
             "body": obj.get("body"),
             "assignee": obj.get("assignee"),
             "state": obj.get("state"),
+            "status": obj.get("status"),
             "state_reason": obj.get("state_reason"),
             "duplicate_issue_id": obj.get("duplicate_issue_id"),
             "milestone": IssuesUpdateRequestMilestone.from_dict(obj["milestone"]) if obj.get("milestone") is not None else None,
