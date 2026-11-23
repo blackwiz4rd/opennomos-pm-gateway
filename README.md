@@ -134,7 +134,7 @@ the rest of the gateway and add no third-party dependency.
 | Plane | Implemented | Vendor SDK (`plane-sdk`) | Yes | Not reported | [Yes — personal API key on Free](https://developers.plane.so/api-reference/introduction) | Work Item | Yes — self-hosted `GET /api/schema/?format=openapi-json` (no public Cloud URL) |
 | Smartsheet | Not implemented | — | — | [9%](https://ramp.com/vendors/smartsheet) | [No — trial cannot issue API tokens](https://help.smartsheet.com/articles/529590-smartsheet-free-trial-faqs); Business/Enterprise required | Row in an explicitly selected Sheet | Yes (URL TBD) — Redocly-hosted `openapi.yaml`, not directly fetchable |
 | Microsoft Planner | Implemented | Direct API (`httpx` + `msal` for OAuth) | **No** | Not reported | [Conditional — OAuth, work/school tenant; personal accounts unsupported](https://learn.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0) | `plannerTask`; unit normalization tests exist, but no live/provider validation | Yes — Graph [openapi.yaml](https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml) (Planner is a subset) |
-| Asana | Implemented | Direct API (`httpx`) | Pending | [21%](https://ramp.com/vendors/asana) | [Yes — personal access token on Personal](https://developers.asana.com/docs/personal-access-token) | Task; project sections are the workflow states; multi-project memberships preserved | Yes — [asana_oas.yaml](https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml) |
+| Asana | Implemented | Direct API (`httpx`) | Pending | [22%](https://ramp.com/vendors/asana) | [Yes — personal access token on Personal](https://developers.asana.com/docs/personal-access-token) | Task; project sections are the workflow states; multi-project memberships preserved | Yes — [asana_oas.yaml](https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml) |
 | monday.com | Implemented | Direct API (`httpx`, GraphQL) | Yes | [19%](https://ramp.com/vendors/monday) | [Yes — API token in free developer sandbox](https://developer.monday.com/api-reference/docs/developer-sandbox-account) | Item with runtime board columns; board groups are the workflow states | No — GraphQL only |
 | Airtable | Not implemented | — | — | [16%](https://ramp.com/vendors/airtable) | [Yes — personal access token on Free](https://support.airtable.com/articles/9934989703-creating-personal-access-tokens); Free API quota applies | Record only after selecting/configuring a table | No official spec (third-party generators only) |
 | Linear | Not implemented | — | — | [15%](https://ramp.com/vendors/linear) | [Yes — personal API key on Free](https://linear.app/developers/graphql) | Issue | No — GraphQL only |
@@ -157,9 +157,15 @@ data from more than 85,000 businesses; this is a directional adoption proxy,
 **not global market share or revenue share**. Vendors can overlap, so percentages
 do not sum to 100%. “Not reported” means no comparable Ramp Project Management
 category estimate was found; do not substitute another category's figure or
-infer a value from the ETR market tiers. Snapshot checked 2026-10-28 against the
+infer a value from the ETR market tiers. Snapshot checked 2026-11-22 against the
 linked [Ramp Rate Project Management category](https://ramp.com/vendors/categories/project-management)
-and vendor pages.
+and vendor pages. Ramp also publishes richer breakdowns (SMB/mid-market/enterprise
+adoption, first-time adopter share, growth rate, and switch rate) for these
+vendors on the same page; consult it when prioritising adapter work. For a
+broader, review-weighted directory of PM tools, see
+[G2's Project Management category](https://www.g2.com/categories/project-management)
+(~1,860 products) and Baserow's
+[55-tool comparison directory](https://baserow.io/blog/top-10-project-management-tools).
 
 Free-tier access describes whether a developer can obtain credentials and make
 test API calls without buying a plan; it does not guarantee every endpoint or
@@ -175,8 +181,10 @@ The 18 mapped products come from the
 [PM tools comparison](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tools-comparison.md)
 and
 [field-mapping inventory](https://github.com/blackwiz4rd/opennomos/blob/main/docs/reference/pm-tool-openapi-field-mapping.md);
-“Not implemented” means mapped for possible support but not yet built as an
-adapter. Microsoft Project stays unimplemented until its API family is selected.
+Celoxis is an additional, manually added implemented adapter that is not yet
+part of that 18-product inventory. “Not implemented” means mapped for possible
+support but not yet built as an adapter. Microsoft Project stays unimplemented
+until its API family is selected.
 Provider support is operation-specific; use
 `get_capabilities` to check the operations available for a particular provider.
 
@@ -196,8 +204,9 @@ gateway's contract, and nothing in this package generates code from them.
 ### Future interoperability scope
 
 The field-mapping inventory describes the intended direction for future provider
-adapters and richer operations. It covers 18 product entries; Azure DevOps is an
-additional product-roadmap candidate, not part of that field inventory. These
+adapters and richer operations. It covers 18 product entries; Azure DevOps and
+Celoxis are additional candidates (Celoxis is implemented but not yet mapped in
+the inventory), not part of that field inventory. These
 are mapping proposals—not claims that every product or feature is implemented.
 Adapter work should prioritize:
 
@@ -242,7 +251,7 @@ gateway bearer token, or make an HTTP request to the gateway.
 
 Create a `PMGateway` and pass the provider credentials on each `execute` call.
 Supported provider keys are `plane`, `jira`, `planner`, `monday`, `asana`,
-`clickup`, `trello`, `basecamp`, `github`, and `compliant`. Jira and compliant providers require their site URL
+`clickup`, `trello`, `basecamp`, `github`, `celoxis`, and `compliant`. Jira and compliant providers require their site URL
 as `base_url`; Plane, Planner, monday.com, Asana, and ClickUp use their
 documented defaults unless an allowlisted URL is supplied. Jira supports two
 backend modes selected with `X-PM-Provider-Mode` (or the SDK `mode`
@@ -257,8 +266,9 @@ Microsoft Graph endpoints. Never pair a stored credential with an untrusted base
 URL.
 Credentials use the provider's expected format: Plane API token, Jira
 `email:api-token`, Planner `tenant_id:client_id:client_secret`, monday.com
-personal API token, Asana personal access token, ClickUp personal API token, or,
-for a
+personal API token, Asana personal access token, ClickUp personal API token,
+Trello API key + user token, Basecamp OAuth token, GitHub personal access token,
+Celoxis access token, or, for a
 compliant provider, the bearer token accepted by the remote service. Keep
 credentials in a secret store or environment variables, not in source control.
 
@@ -303,7 +313,8 @@ asyncio.run(main())
 `execute(operation, *, provider, credential, base_url=None, **params)` takes an
 `Operation` enum member and that operation's parameters. The `provider`
 argument takes a `Provider` enum member: `Provider.PLANE`, `Provider.JIRA`,
-`Provider.PLANNER`, `Provider.MONDAY`, `Provider.ASANA`, `Provider.CLICKUP`, or
+`Provider.PLANNER`, `Provider.MONDAY`, `Provider.ASANA`, `Provider.CLICKUP`,
+`Provider.TRELLO`, `Provider.BASECAMP`, `Provider.GITHUB`, `Provider.CELOXIS`, or
 `Provider.COMPLIANT`. For Jira, pass `mode=ProviderMode.HTTP` or
 `ProviderMode.SDK` (defaults to `SDK` in the in-process SDK). Use operation
 members such as
@@ -588,18 +599,21 @@ configure the listener.
 The service mounts the draft OpenAPI API at `/pm/v1`. `/healthz` is an
 unauthenticated liveness endpoint; API operations require the gateway bearer token.
 
-Plane, Jira, Microsoft Planner, monday.com, Asana, and ClickUp adapters are
-implemented in `src/pm_gateway/adapters/`. They support workspace/container
-discovery, work-item reads, workflow-state reads and transitions; Jira and
-Planner also expose their current board/bucket behavior. monday.com maps boards
-to containers and board groups to workflow states; other board columns are
-surfaced through normalized custom fields. Asana maps projects to containers and
-project sections to workflow states; a task's project memberships are preserved,
-and its custom fields are surfaced through normalized custom fields. ClickUp
-maps Lists to containers and List statuses to workflow states; its custom fields
-are surfaced through normalized custom fields. Capabilities mark custom fields,
-milestones, comments, attachments, and general field updates unsupported until
-implemented.
+Plane, Jira, Microsoft Planner, monday.com, Asana, ClickUp, Trello, Basecamp,
+GitHub, and Celoxis adapters are implemented in `src/pm_gateway/adapters/`. They
+support workspace/container discovery, work-item reads, workflow-state reads and
+transitions where the provider exposes them; Jira and Planner also expose their
+current board/bucket behavior. monday.com maps boards to containers and board
+groups to workflow states; other board columns are surfaced through normalized
+custom fields. Asana maps projects to containers and project sections to workflow
+states; a task's project memberships are preserved, and its custom fields are
+surfaced through normalized custom fields. ClickUp maps Lists to containers and
+List statuses to workflow states; its custom fields are surfaced through
+normalized custom fields. Trello maps boards to containers and lists to workflow
+states; Basecamp maps projects to containers and to-do lists to workflow states;
+GitHub maps repositories to containers; Celoxis maps projects to containers via
+its API v2. Capabilities mark custom fields, milestones, comments, attachments,
+and general field updates unsupported until implemented.
 The `compliant` provider is a passthrough to third-party software that implements
 the standard API directly.
 
