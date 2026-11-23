@@ -92,6 +92,12 @@ def sanitize(obj):
     return obj
 spec = sanitize(spec)
 
+# The upstream OpenAPI document version is a snapshot hash that changes on
+# every provider spec update. Normalize it so generated file headers stay
+# stable and spec version bumps do not churn every generated file.
+if isinstance(spec.get("info"), dict):
+    spec["info"]["version"] = "provider-openapi"
+
 with open(dst, 'w') as f:
     json.dump(spec, f)
 PYEOF
