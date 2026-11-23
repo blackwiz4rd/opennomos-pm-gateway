@@ -281,7 +281,7 @@ from pm_gateway import Operation, PMGateway, Provider
 async def main() -> None:
     gateway = PMGateway()
     provider = Provider.JIRA
-    credential = os.environ["JIRA_CREDENTIAL"]  # email:api-token
+    credential = os.environ["JIRA_API_TOKEN"]  # email:api-token
     base_url = os.environ["JIRA_BASE_URL"]      # e.g. https://example.atlassian.net
 
     # Check what this provider supports before relying on optional operations.
