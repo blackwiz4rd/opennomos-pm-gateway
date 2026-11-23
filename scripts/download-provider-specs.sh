@@ -23,7 +23,6 @@ CURL_TIMEOUT="${PM_GATEWAY_SPEC_CURL_TIMEOUT_SECONDS:-120}"
 # the provider support table in README.md.
 SPEC_CATALOG=(
     "jira|https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json|jira-openapi.json|"
-    "confluence|https://developer.atlassian.com/cloud/confluence/swagger.v3.json|confluence-openapi.json|"
     "trello|https://developer.atlassian.com/cloud/trello/swagger.v3.json|trello-openapi.json|"
     "plane|https://developers.plane.so/api-reference/introduction|plane-openapi.json|self-hosted only: GET /api/schema/?format=openapi-json on your Plane instance"
     "planner|https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml|msgraph-v1.0-openapi.yaml|Microsoft Graph v1.0; Planner is a subset of this document"

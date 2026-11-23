@@ -130,7 +130,6 @@ the rest of the gateway and add no third-party dependency.
 | Provider / product | Implementation status | Implementation | Live/provider-tested | Est. PM-category adoption (Ramp, Oct 2026) | Free-account API access / credential | Native model / qualification | OpenAPI spec (download) |
 | --- | --- | --- | --- | ---: | --- | --- | --- |
 | Jira | Implemented | Vendor SDK (`jira`) or Direct API (`httpx`) via `X-PM-Provider-Mode` | Yes | [47%](https://ramp.com/vendors/jira) | [Yes — API token on Free Cloud](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) | Issue | Yes — [swagger-v3.v3.json](https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json) |
-| Confluence | Not implemented | — | — | Not reported | [Yes — API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) on Free Cloud | Page/content by default; inline tasks can use a work-item profile | Yes — [swagger.v3.json](https://developer.atlassian.com/cloud/confluence/swagger.v3.json) |
 | Trello | Implemented | Direct API (`httpx`) | Pending | [7%](https://ramp.com/vendors/trello) | [Yes — API key + user token](https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/) | Card | Yes — [swagger.v3.json](https://developer.atlassian.com/cloud/trello/swagger.v3.json) |
 | Plane | Implemented | Vendor SDK (`plane-sdk`) | Yes | Not reported | [Yes — personal API key on Free](https://developers.plane.so/api-reference/introduction) | Work Item | Yes — self-hosted `GET /api/schema/?format=openapi-json` (no public Cloud URL) |
 | Smartsheet | Not implemented | — | — | [9%](https://ramp.com/vendors/smartsheet) | [No — trial cannot issue API tokens](https://help.smartsheet.com/articles/529590-smartsheet-free-trial-faqs); Business/Enterprise required | Row in an explicitly selected Sheet | Yes (URL TBD) — Redocly-hosted `openapi.yaml`, not directly fetchable |
@@ -220,7 +219,7 @@ Adapter work should prioritize:
   where no safe common field exists.
 
 Some sources require explicit configuration before they can be treated as work
-items: for example, Confluence pages are content by default, and Airtable or
+items: for example, Airtable or
 Notion records need a selected table/data source and field mapping. Microsoft
 Project also needs an explicitly named API family. Feature availability and
 field definitions can vary by connection or container, so provider-wide

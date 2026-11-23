@@ -150,7 +150,7 @@ async def test_token_identity(check) -> None:
             data = await provider._request("query { me { id name } }", {})
         me = data.get("me") or {}
         assert me.get("id"), "monday.com did not return an identity for the token"
-        entry["detail"] = f"user {me.get('name') or me.get('id')}"
+        entry["detail"] = "passed"
 
 
 async def test_workspaces_are_listable(check) -> None:
@@ -173,10 +173,7 @@ async def test_containers_and_groups_resolve(check) -> None:
             states = await provider.list_states(workspace_id, board["id"])
             assert states, "board returned no groups"
             assert all(state["id"] for state in states)
-        entry["detail"] = (
-            f"{len(containers)} board(s), {len(states)} group(s) on "
-            f"board {board['id']}"
-        )
+        entry["detail"] = f"{len(containers)} board(s), {len(states)} group(s)"
 
 
 async def test_work_items_are_readable_and_normalized(check) -> None:
@@ -201,7 +198,7 @@ async def test_work_items_are_readable_and_normalized(check) -> None:
                 assert projected["source"]["provider"] == "monday"
                 assert projected["source"]["resourceType"] == "item"
                 assert projected["title"] is not None
-        entry["detail"] = f"{len(items)} item(s) on board {board['id']}"
+        entry["detail"] = f"{len(items)} item(s)"
 
 
 async def test_single_work_item_round_trips(check) -> None:
@@ -218,7 +215,7 @@ async def test_single_work_item_round_trips(check) -> None:
             )
             assert fetched["id"] == item["id"]
             assert fetched["project_id"] == board["id"]
-        entry["detail"] = f"item {item['id']}"
+        entry["detail"] = "passed"
 
 
 async def test_cursor_pagination_is_supported(check) -> None:
@@ -244,7 +241,7 @@ async def test_cursor_pagination_is_supported(check) -> None:
             next_ids = {item["id"] for item in next_page.get("items") or []}
             assert next_ids
             assert not (first_ids & next_ids)
-        entry["detail"] = f"cursor pagination on board {board['id']}"
+        entry["detail"] = "passed"
 
 
 async def test_unknown_board_maps_to_not_found(check) -> None:

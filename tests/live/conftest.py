@@ -23,6 +23,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 _PROVIDERS = {
     "monday": {"prefix": "MONDAY_", "slug": "monday", "title": "monday.com"},
     "asana": {"prefix": "ASANA_", "slug": "asana", "title": "Asana"},
+    "plane": {"prefix": "PLANE_", "slug": "plane", "title": "Plane"},
+    "jira": {"prefix": "JIRA_", "slug": "jira", "title": "Jira"},
+    "trello": {"prefix": "TRELLO_", "slug": "trello", "title": "Trello"},
+    "github": {"prefix": "GITHUB_", "slug": "github", "title": "GitHub"},
     "clickup": {"prefix": "CLICKUP_", "slug": "clickup", "title": "ClickUp"},
 }
 
@@ -160,4 +164,6 @@ def _write_report(exitstatus: int) -> None:
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if os.getenv("PM_GATEWAY_LIVE_REPORT", "1").strip().lower() in {"0", "false", "no", "off"}:
+        return
     _write_report(int(exitstatus))

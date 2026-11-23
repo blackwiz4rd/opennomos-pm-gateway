@@ -6,12 +6,6 @@
       "filename": "jira-openapi.json",
       "sha256": "36a08f68d55c32f4e8dc257c1ca26f693d09e066a041dbf041ccb804dc52b971"
     },
-    "confluence": {
-      "status": "available",
-      "url": "https://developer.atlassian.com/cloud/confluence/swagger.v3.json",
-      "filename": "confluence-openapi.json",
-      "sha256": "f80279e4beace901a20174044ff3dc1cf047ea9486c3dd6eff57e33e4161bf12"
-    },
     "trello": {
       "status": "available",
       "url": "https://developer.atlassian.com/cloud/trello/swagger.v3.json",

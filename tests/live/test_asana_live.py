@@ -102,7 +102,7 @@ async def test_token_identity(check) -> None:
                 "GET", "/users/me", params={"opt_fields": "gid,name"}
             )
         assert me.get("gid"), "Asana did not return an identity for the token"
-        entry["detail"] = f"user {me.get('name') or me.get('gid')}"
+        entry["detail"] = "passed"
 
 
 async def test_workspaces_are_listable(check) -> None:
@@ -126,10 +126,7 @@ async def test_containers_and_sections_resolve(check) -> None:
             states = await provider.list_states(workspace_id, project["id"])
             assert states, "project returned no sections"
             assert all(state["id"] for state in states)
-        entry["detail"] = (
-            f"{len(containers)} project(s), {len(states)} section(s) on "
-            f"project {project['id']}"
-        )
+        entry["detail"] = f"{len(containers)} project(s), {len(states)} section(s)"
 
 
 async def test_work_items_are_readable_and_normalized(check) -> None:
@@ -154,7 +151,7 @@ async def test_work_items_are_readable_and_normalized(check) -> None:
                 assert projected["source"]["provider"] == "asana"
                 assert projected["source"]["resourceType"] == "task"
                 assert projected["title"] is not None
-        entry["detail"] = f"{len(items)} task(s) on project {project['id']}"
+        entry["detail"] = f"{len(items)} task(s)"
 
 
 async def test_single_work_item_round_trips(check) -> None:
@@ -171,7 +168,7 @@ async def test_single_work_item_round_trips(check) -> None:
             )
             assert fetched["id"] == item["id"]
             assert fetched["project_id"] == item["project_id"]
-        entry["detail"] = f"task {item['id']}"
+        entry["detail"] = "passed"
 
 
 async def test_offset_pagination_is_supported(check) -> None:
@@ -209,7 +206,7 @@ async def test_offset_pagination_is_supported(check) -> None:
             next_ids = {str(item.get("gid")) for item in following.get("data") or []}
             assert next_ids
             assert not (first_ids & next_ids)
-        entry["detail"] = f"offset pagination on project {project['id']}"
+        entry["detail"] = "passed"
 
 
 async def test_unknown_project_maps_to_not_found(check) -> None:
