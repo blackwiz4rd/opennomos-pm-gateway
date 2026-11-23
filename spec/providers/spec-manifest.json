@@ -4,7 +4,7 @@
       "status": "available",
       "url": "https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json",
       "filename": "jira-openapi.json",
-      "sha256": "36a08f68d55c32f4e8dc257c1ca26f693d09e066a041dbf041ccb804dc52b971"
+      "sha256": "2f42d2cce182b7e2f7bc4170fcf098af7ba462e5fa29bfb8300ddc3e9750f1e1"
     },
     "trello": {
       "status": "available",
@@ -27,7 +27,7 @@
       "status": "available",
       "url": "https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml",
       "filename": "asana-openapi.yaml",
-      "sha256": "e150fced56c97c4d9325bd77dd856f90ed1f74e3a82e4b9fdb41b6d79947db4a"
+      "sha256": "48609ae9b7e203fc352cc47f72ac8804aba491ddf1409ec873480f2278ae6131"
     },
     "clickup": {
       "status": "available",
