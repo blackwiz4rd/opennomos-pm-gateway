@@ -51,18 +51,6 @@ async def open_provider(
     validate_provider_context(normalized, credential, base_url)
     validated_base_url = validate_provider_base_url(normalized, base_url)
     await validate_provider_destination(normalized, validated_base_url)
-    adapter_type = {
-        "plane": PlaneProvider,
-        "planner": PlannerProvider,
-        "monday": MondayProvider,
-        "asana": AsanaProvider,
-        "clickup": ClickUpProvider,
-        "trello": TrelloProvider,
-        "basecamp": BasecampProvider,
-        "celoxis": CeloxisProvider,
-        "github": GitHubProvider,
-        "compliant": CompliantProvider,
-    }[normalized]
     if normalized == "jira":
         mode_value = (mode or "http-client").strip().lower()
         if mode_value == "sdk":
@@ -71,6 +59,19 @@ async def open_provider(
             from pm_gateway.adapters.jira_http import JiraHttpProvider
 
             adapter_type = JiraHttpProvider
+    else:
+        adapter_type = {
+            "plane": PlaneProvider,
+            "planner": PlannerProvider,
+            "monday": MondayProvider,
+            "asana": AsanaProvider,
+            "clickup": ClickUpProvider,
+            "trello": TrelloProvider,
+            "basecamp": BasecampProvider,
+            "celoxis": CeloxisProvider,
+            "github": GitHubProvider,
+            "compliant": CompliantProvider,
+        }[normalized]
     adapter = adapter_type(credential, validated_base_url)
     try:
         yield adapter

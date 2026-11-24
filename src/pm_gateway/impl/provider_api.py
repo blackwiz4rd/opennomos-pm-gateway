@@ -244,7 +244,7 @@ async def _run(operation: str, args: tuple, kwargs: dict):
     except Exception as exc:
         # Never log upstream exception text: client libraries can include request
         # details, and this service receives credentials in request headers.
-        logger.error("Provider %s failed during %s (%s)", provider, operation, type(exc).__name__)
+        logger.error("[pm-gateway] Provider %s failed during %s (%s)", provider, operation, type(exc).__name__)
         status_code = getattr(exc, "status_code", None)
         if status_code is None:
             status_code = getattr(getattr(exc, "response", None), "status_code", None)
@@ -713,7 +713,7 @@ class PMGateway:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
-            logger.error("Provider %s failed during %s (%s)", provider, operation, type(exc).__name__)
+            logger.error("[pm-gateway] Provider %s failed during %s (%s)", provider, operation, type(exc).__name__)
             status_code = getattr(exc, "status_code", None)
             if status_code is None:
                 status_code = getattr(getattr(exc, "response", None), "status_code", None)

@@ -33,6 +33,34 @@ from pm_gateway.security import provider_timeout_seconds
 
 logger = logging.getLogger("pm_gateway.adapters.jira")
 
+
+def _adf_to_text(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    # Jira Cloud returns Atlassian Document Format (ADF) as a SimpleNamespace.
+    parts: list[str] = []
+
+    def walk(node):
+        if node is None:
+            return
+        if isinstance(node, str):
+            parts.append(node)
+            return
+        text = getattr(node, "text", None)
+        if isinstance(text, str):
+            parts.append(text)
+        for child in getattr(node, "content", None) or []:
+            walk(child)
+        # add paragraph break
+        if getattr(node, "type", None) in ("paragraph", "heading"):
+            parts.append("\\n")
+
+    walk(value)
+    result = "".join(parts).strip()
+    return result or None
+
 # Expands understood by the Jira API; anything else (e.g. Plane's "state")
 # is dropped so calls stay valid.
 _VALID_EXPANDS = {
@@ -268,7 +296,7 @@ class JiraProvider:
             id=issue.key,
             identifier=issue.key,
             title=getattr(fields, "summary", "") or "",
-            description=getattr(fields, "description", None),
+            description=_adf_to_text(getattr(fields, "description", None)),
             state=status_name,
             state_id=status_id,
             state_category=status_category,
