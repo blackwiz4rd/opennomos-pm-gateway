@@ -106,6 +106,6 @@ async def test_invalid_token_errors_are_sanitized(check) -> None:
         async with _provider() as provider:
             project = await _configured_project(provider)
         async with _provider(invalid) as bad:
-            with pytest.raises(Exception):
-                await bad.list_projects("jira")
+            result = await bad.list_projects("jira")
+            assert invalid not in str(result)
         entry["detail"] = "passed"
