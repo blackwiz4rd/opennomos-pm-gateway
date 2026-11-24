@@ -6,6 +6,12 @@ versioned separately in the OpenAPI document.
 
 ## [Unreleased]
 
+## [0.1.0a5] - 2026-11-24
+
+### Changed
+
+- Freshness and Jira fixes, Celoxis provider, spec/client refresh.
+
 ## [0.1.0a4] - 2026-11-12
 
 ### Fixed
