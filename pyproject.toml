@@ -88,6 +88,8 @@ extend-exclude = ["src/pm_gateway/generated"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-m 'not spec_freshness'"
 markers = [
     "live: exercises a real provider API; skipped unless credentials are configured",
+    "spec_freshness: checks provider specs against upstream manifest; skipped by default",
 ]

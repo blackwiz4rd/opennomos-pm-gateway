@@ -14,6 +14,7 @@ def _load_manifest() -> dict:
 
 
 @pytest.mark.live
+@pytest.mark.spec_freshness
 def test_provider_specs_match_manifest() -> None:
     manifest = _load_manifest()
     import urllib.request
