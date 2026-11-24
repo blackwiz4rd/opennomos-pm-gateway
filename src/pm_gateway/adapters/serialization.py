@@ -252,6 +252,7 @@ def as_work_item(
         title=str(raw.get("title") or ""),
         description=description,
         description_content_type=description_content_type,
+        description_html=raw.get("description_html"),
         url=safe_url(raw.get("url")) or native_url,
         status=status,
         priority=priority,

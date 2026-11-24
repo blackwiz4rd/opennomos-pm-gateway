@@ -990,6 +990,9 @@ components:
         descriptionContentType:
           type: [string, 'null']
           description: Content type of the source or canonical description representation.
+        descriptionHtml:
+          type: [string, 'null']
+          description: Rendered HTML description when available (e.g. Jira renderedFields).
         url:
           type: [string, 'null']
           format: uri

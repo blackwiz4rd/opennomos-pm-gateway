@@ -151,7 +151,7 @@ class JiraHttpProvider:
         _, search_api, *_ = await self._ensure()
         jql = f'project = "{project_id}" ORDER BY updated DESC'
         try:
-            result = await search_api.search_and_reconsile_issues_using_jql(jql=jql, max_results=100, fields=["*all"])
+            result = await search_api.search_and_reconsile_issues_using_jql(jql=jql, max_results=100, fields=["*all"], expand="renderedFields")
         except Exception as exc:
             raise JiraHttpAPIError(self._sanitize(str(exc)), status_code=getattr(exc, "status", None)) from exc
         issues = getattr(result, "issues", None) or []
@@ -159,19 +159,21 @@ class JiraHttpProvider:
         for issue in issues:
             raw = _as_dict(issue)
             fields = _to_obj(raw.get("fields") or {})
-            shim = SimpleNamespace(key=raw.get("key"), fields=fields, id=raw.get("id"))
+            rendered = _to_obj(raw.get("renderedFields") or {})
+            shim = SimpleNamespace(key=raw.get("key"), fields=fields, renderedFields=rendered, id=raw.get("id"))
             out.append(JiraProvider._issue_to_dict(shim))
         return out
 
     async def get_work_item(self, workspace_slug: str, project_id: str, work_item_id: str) -> dict:
         _, _, issues_api, _ = await self._ensure()
         try:
-            issue = await issues_api.get_issue(issue_id_or_key=work_item_id, fields=["*all"])
+            issue = await issues_api.get_issue(issue_id_or_key=work_item_id, fields=["*all"], expand="renderedFields")
         except Exception as exc:
             raise JiraHttpAPIError(self._sanitize(str(exc)), status_code=getattr(exc, "status", None)) from exc
         raw = _as_dict(issue)
         fields = _to_obj(raw.get("fields") or {})
-        shim = SimpleNamespace(key=raw.get("key"), fields=fields, id=raw.get("id"))
+        rendered = _to_obj(raw.get("renderedFields") or {})
+        shim = SimpleNamespace(key=raw.get("key"), fields=fields, renderedFields=rendered, id=raw.get("id"))
         if not raw.get("key") and not raw.get("id"):
             raise JiraHttpAPIError("The requested Jira issue was not found.", status_code=404)
         return JiraProvider._issue_to_dict(shim)

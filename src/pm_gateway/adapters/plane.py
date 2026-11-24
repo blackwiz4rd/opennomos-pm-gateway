@@ -143,6 +143,7 @@ class PlaneProvider:
             title=raw.get("name", ""),
             description=description,
             description_content_type=description_content_type,
+            description_html=raw.get("description_html"),
             state=state_name,
             state_id=state_id,
             state_category=state_category,

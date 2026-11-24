@@ -316,6 +316,7 @@ class JiraProvider:
             identifier=issue.key,
             title=getattr(fields, "summary", "") or "",
             description=_adf_to_markdown(getattr(fields, "description", None)),
+            description_html=getattr(getattr(issue, "renderedFields", None), "description", None),
             state=status_name,
             state_id=status_id,
             state_category=status_category,
@@ -370,12 +371,17 @@ class JiraProvider:
         self,
         workspace_slug: str,
         project_id: str,
-        expand: str | None = None,
+        expand: str | None = "renderedFields",
         board_id: str | None = None,
         sprint_ids: list[str] | None = None,
     ) -> list[dict]:
         client = await self._ensure(workspace_slug)
-        valid_expand = expand if expand in _VALID_EXPANDS else None
+        if expand:
+            parts = [p.strip() for p in expand.split(",") if p.strip()]
+            valid_parts = [p for p in parts if p in _VALID_EXPANDS]
+            valid_expand = ",".join(valid_parts) or None
+        else:
+            valid_expand = None
 
         resolved_board = await self._resolve_board_id(client, project_id, board_id)
         if resolved_board is None:
@@ -628,7 +634,7 @@ class JiraProvider:
     ) -> dict:
         client = await self._ensure(workspace_slug)
         work_item_id = _validate_issue_id(work_item_id)
-        issue = await asyncio.to_thread(client.issue, work_item_id)
+        issue = await asyncio.to_thread(client.issue, work_item_id, expand="renderedFields")
         return self._issue_to_dict(issue)
 
     async def _board_statuses(self, client: JIRA, board_id: str) -> list[dict] | None:
@@ -698,7 +704,7 @@ class JiraProvider:
         target = (data or {}).get("state")
         if target:
             await asyncio.to_thread(self._transition, client, work_item_id, str(target))
-        issue = await asyncio.to_thread(client.issue, work_item_id)
+        issue = await asyncio.to_thread(client.issue, work_item_id, expand="renderedFields")
         return self._issue_to_dict(issue)
 
     @staticmethod

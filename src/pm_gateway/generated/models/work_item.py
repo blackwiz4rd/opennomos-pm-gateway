@@ -52,6 +52,7 @@ class WorkItem(BaseModel):
     title: StrictStr
     description: Optional[StrictStr] = None
     description_content_type: Optional[StrictStr] = Field(default=None, description="Content type of the source or canonical description representation.", alias="descriptionContentType")
+    description_html: Optional[StrictStr] = Field(default=None, description="Rendered HTML description when available (e.g. Jira renderedFields).", alias="descriptionHtml")
     url: Optional[StrictStr] = None
     status: Optional[WorkflowStateRef] = None
     priority: Optional[PriorityValue] = None
@@ -74,7 +75,7 @@ class WorkItem(BaseModel):
     custom_fields: Optional[List[CustomFieldValue]] = Field(default=None, alias="customFields")
     source: SourceMetadata
     extensions: Optional[Dict[str, Any]] = Field(default=None, description="Optional namespaced provider values. Keys must use a stable namespace controlled by the provider, such as a reverse-DNS name, a URI-like namespace, or a provider-prefixed key such as \"jira:native\"; clients must ignore unknown keys. Sensitive raw provider payloads should not be placed here by default.")
-    __properties: ClassVar[List[str]] = ["id", "identifier", "title", "description", "descriptionContentType", "url", "status", "priority", "estimate", "assignees", "creator", "memberships", "lifecycle", "parent", "dates", "labels", "followers", "components", "versions", "iteration", "milestones", "timeTracking", "itemType", "relationships", "customFields", "source", "extensions"]
+    __properties: ClassVar[List[str]] = ["id", "identifier", "title", "description", "descriptionContentType", "descriptionHtml", "url", "status", "priority", "estimate", "assignees", "creator", "memberships", "lifecycle", "parent", "dates", "labels", "followers", "components", "versions", "iteration", "milestones", "timeTracking", "itemType", "relationships", "customFields", "source", "extensions"]
 
     model_config = {
         "populate_by_name": True,
@@ -224,6 +225,11 @@ class WorkItem(BaseModel):
         if self.description_content_type is None and "description_content_type" in self.model_fields_set:
             _dict['descriptionContentType'] = None
 
+        # set to None if description_html (nullable) is None
+        # and model_fields_set contains the field
+        if self.description_html is None and "description_html" in self.model_fields_set:
+            _dict['descriptionHtml'] = None
+
         # set to None if url (nullable) is None
         # and model_fields_set contains the field
         if self.url is None and "url" in self.model_fields_set:
@@ -286,6 +292,7 @@ class WorkItem(BaseModel):
             "title": obj.get("title"),
             "description": obj.get("description"),
             "descriptionContentType": obj.get("descriptionContentType"),
+            "descriptionHtml": obj.get("descriptionHtml"),
             "url": obj.get("url"),
             "status": WorkflowStateRef.from_dict(obj.get("status")) if obj.get("status") is not None else None,
             "priority": PriorityValue.from_dict(obj.get("priority")) if obj.get("priority") is not None else None,

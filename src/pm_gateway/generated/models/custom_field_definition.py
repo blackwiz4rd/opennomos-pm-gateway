@@ -40,7 +40,7 @@ class CustomFieldDefinition(BaseModel):
     writable: Optional[StrictBool] = None
     scope: StrictStr
     options: Optional[List[Any]] = None
-    var_schema: Optional[Any] = Field(default=None, alias="schema")
+    var_schema: Optional[Any] = Field(default=None, description="Optional JSON Schema for values when the provider exposes one.", alias="schema")
     extensions: Optional[Dict[str, Any]] = Field(default=None, description="Optional namespaced provider values. Keys must use a stable namespace controlled by the provider, such as a reverse-DNS name, a URI-like namespace, or a provider-prefixed key such as \"jira:native\"; clients must ignore unknown keys. Sensitive raw provider payloads should not be placed here by default.")
     additional_properties: Dict[str, Any] = {}
     __properties: ClassVar[List[str]] = ["id", "name", "description", "valueType", "cardinality", "required", "writable", "scope", "options", "schema", "extensions"]

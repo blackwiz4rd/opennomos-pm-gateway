@@ -109,3 +109,22 @@ async def test_invalid_token_errors_are_sanitized(check) -> None:
             result = await bad.list_projects("jira")
             assert invalid not in str(result)
         entry["detail"] = "passed"
+
+
+async def test_work_item_description_has_markdown_and_html(check) -> None:
+    import re
+
+    with check("work-items description markdown + rendered html") as entry:
+        async with _provider() as provider:
+            project = await _configured_project(provider)
+            items = await provider.list_work_items("jira", project["id"])
+            if not items:
+                pytest.skip("the selected project has no active issues")
+            fetched = await provider.get_work_item("jira", project["id"], items[0]["id"])
+            desc = fetched.get("description")
+            desc_html = fetched.get("description_html")
+            if desc is not None:
+                assert not re.search(r"<[a-zA-Z][^>]*>", str(desc)), "description should be markdown, not HTML"
+            if desc_html is not None:
+                assert re.search(r"<[a-zA-Z][^>]*>", str(desc_html)), "description_html should contain HTML tags"
+        entry["detail"] = "passed"
