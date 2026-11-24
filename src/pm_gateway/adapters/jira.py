@@ -15,6 +15,7 @@ Authentication: the credential ``api_key`` is either ``email:token``
 """
 
 import asyncio
+import json
 import logging
 import re
 
@@ -34,32 +35,50 @@ from pm_gateway.security import provider_timeout_seconds
 logger = logging.getLogger("pm_gateway.adapters.jira")
 
 
-def _adf_to_text(value) -> str | None:
+def _to_dict(value):
+    if isinstance(value, dict):
+        return {k: _to_dict(v) for k, v in value.items()}
+    if hasattr(value, "__dict__"):
+        return {k: _to_dict(v) for k, v in vars(value).items() if not k.startswith("_")}
+    if isinstance(value, (list, tuple)):
+        return [_to_dict(v) for v in value]
+    return value
+
+
+def _adf_to_markdown(value) -> str | None:
     if value is None:
         return None
     if isinstance(value, str):
         return value
     # Jira Cloud returns Atlassian Document Format (ADF) as a SimpleNamespace.
-    parts: list[str] = []
+    try:
+        from pyadf._core import document_to_markdown
 
-    def walk(node):
-        if node is None:
-            return
-        if isinstance(node, str):
-            parts.append(node)
-            return
-        text = getattr(node, "text", None)
-        if isinstance(text, str):
-            parts.append(text)
-        for child in getattr(node, "content", None) or []:
-            walk(child)
-        # add paragraph break
-        if getattr(node, "type", None) in ("paragraph", "heading"):
-            parts.append("\\n")
+        adf_dict = _to_dict(value)
+        if not isinstance(adf_dict, dict) or "type" not in adf_dict:
+            return None
+        return document_to_markdown(json.dumps(adf_dict)) or None
+    except Exception:
+        # Fall back to plain-text extraction if conversion fails.
+        parts: list[str] = []
 
-    walk(value)
-    result = "".join(parts).strip()
-    return result or None
+        def walk(node):
+            if node is None:
+                return
+            if isinstance(node, str):
+                parts.append(node)
+                return
+            text = getattr(node, "text", None)
+            if isinstance(text, str):
+                parts.append(text)
+            for child in getattr(node, "content", None) or []:
+                walk(child)
+            if getattr(node, "type", None) in ("paragraph", "heading"):
+                parts.append("\\n")
+
+        walk(value)
+        result = "".join(parts).strip()
+        return result or None
 
 # Expands understood by the Jira API; anything else (e.g. Plane's "state")
 # is dropped so calls stay valid.
@@ -296,7 +315,7 @@ class JiraProvider:
             id=issue.key,
             identifier=issue.key,
             title=getattr(fields, "summary", "") or "",
-            description=_adf_to_text(getattr(fields, "description", None)),
+            description=_adf_to_markdown(getattr(fields, "description", None)),
             state=status_name,
             state_id=status_id,
             state_category=status_category,
